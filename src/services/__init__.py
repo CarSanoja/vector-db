@@ -1,15 +1,10 @@
-"""Service layer module exports."""
-from .library_service import LibraryService, ILibraryService
-from .chunk_service import ChunkService, IChunkService
-from .search_service import SearchService, ISearchService
-from .factory import ServiceFactory
+"""Services module."""
+from .service_interfaces import ILibraryService, IChunkService, ISearchService
+from .service_factory import ServiceFactory
 
 __all__ = [
-    "LibraryService",
     "ILibraryService",
-    "ChunkService",
-    "IChunkService",
-    "SearchService",
+    "IChunkService", 
     "ISearchService",
-    "ServiceFactory",
+    "ServiceFactory"
 ]
