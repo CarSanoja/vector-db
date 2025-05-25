@@ -1,7 +1,7 @@
 """Main application entry point for Vector Database API."""
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from src.api import health, libraries, chunks, search
+from src.api.endpoints import health, libraries, chunks, search
 from src.core.config import settings
 
 # Create FastAPI application
