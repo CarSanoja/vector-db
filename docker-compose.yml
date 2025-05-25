@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  vector-db:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vector-database-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    environment:
+      - ENV=development
+      - PERSISTENCE_ENABLED=true
+      - LOG_LEVEL=INFO
+    env_file:
+      - .env
+    restart: unless-stopped
+    networks:
+      - vector-db-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  redis:
+    image: redis:7-alpine
+    container_name: vector-db-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - vector-db-network
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+
+networks:
+  vector-db-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+    driver: local
