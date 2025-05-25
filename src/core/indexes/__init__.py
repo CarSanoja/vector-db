@@ -18,3 +18,8 @@ __all__ = [
     "IndexBenchmark",
 ]
 
+
+from .factory import IndexFactory
+from .benchmark import IndexBenchmark
+
+__all__.extend(["IndexFactory", "IndexBenchmark"])
