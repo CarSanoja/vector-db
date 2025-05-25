@@ -3,7 +3,7 @@ from enum import Enum
 from typing import Dict, Any, Optional
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 
 class IndexType(str, Enum):
@@ -27,21 +27,23 @@ class Library(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     
-    @validator('dimension')
-    def validate_dimension(cls, v):
+    @field_validator('dimension')
+    @classmethod
+    def validate_dimension(cls, v: int) -> int:
         """Ensure dimension is reasonable for vector operations."""
         if v <= 0 or v > 4096:
             raise ValueError("Dimension must be between 1 and 4096")
         return v
     
-    @validator('updated_at', always=True)
-    def update_timestamp(cls, v):
+    @field_validator('updated_at', mode='before')
+    @classmethod
+    def update_timestamp(cls, v: Any) -> datetime:
         """Auto-update timestamp on changes."""
         return datetime.utcnow()
     
-    class Config:
-        """Pydantic model configuration."""
-        json_encoders = {
+    model_config = {
+        "json_encoders": {
             UUID: str,
             datetime: lambda v: v.isoformat(),
         }
+    }
