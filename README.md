@@ -1,8 +1,3 @@
-¡Excelente idea actualizar el README principal! Un buen README es fundamental para que otros (¡y tu yo futuro!) entiendan el proyecto rápidamente.
-
-Aquí tienes una propuesta de "lienzo" o borrador para tu README.md principal, incorporando la información que hemos discutido y las características que has implementado. Deberás ajustarlo y completarlo con los detalles específicos de tu proyecto (como URLs de repositorios, contenido exacto del Makefile, etc.).
-Markdown
-
 # Vector Database API
 
 A REST API for indexing and querying documents within a Vector Database, specializing in storing and searching vector embeddings. This project features custom-coded indexing algorithms and is designed to be containerized using Docker.
@@ -138,13 +133,6 @@ Core Logic & Feature Examples
 These scripts demonstrate internal functionalities. The runner script handles environment setup.
 Bash
 
-# From the project root
-./examples/run_all_examples.sh
-
-API Client Examples
-
-These scripts interact with the live API endpoints. The API server must be running. The runner script handles Python environment setup.
-Bash
 
 # From the project root
 ./examples/run_api_tests.sh
