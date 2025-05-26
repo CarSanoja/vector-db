@@ -85,36 +85,39 @@ async def test_wal_recovery():
     """Test WAL recovery after crash."""
     with tempfile.TemporaryDirectory() as tmpdir:
         wal_dir = Path(tmpdir)
+        
         # First session - write entries
-       wal1 = FileWAL(wal_dir)
-       await wal1.initialize()
-       
-       resource_id = uuid4()
-       for i in range(3):
-           await wal1.append(
-               OperationType.CREATE_LIBRARY,
-               resource_id,
-               {"index": i}
-           )
-       
-       # Don't close properly (simulate crash)
-       wal1.current_file.close()
-       
-       # Second session - recover
-       wal2 = FileWAL(wal_dir)
-       await wal2.initialize()
-       
-       # Should be able to read previous entries
-       entries = await wal2.read()
-       assert len(entries) == 3
-       assert wal2.current_sequence == 3
-       
-       # Should be able to continue
-       seq = await wal2.append(
-           OperationType.UPDATE_LIBRARY,
-           resource_id,
-           {"recovered": True}
-       )
-       assert seq == 4
-       
-       await wal2.close()
+        wal1 = FileWAL(wal_dir)
+        await wal1.initialize()
+        
+        resource_id = uuid4()
+        for i in range(3):
+            await wal1.append(
+                OperationType.CREATE_LIBRARY,
+                resource_id,
+                {"index": i}
+            )
+        
+        # Don't close properly (simulate crash)
+        # Force close the async file handle
+        await wal1.current_file.close()
+        wal1.current_file = None
+        
+        # Second session - recover
+        wal2 = FileWAL(wal_dir)
+        await wal2.initialize()
+        
+        # Should be able to read previous entries
+        entries = await wal2.read()
+        assert len(entries) == 3
+        assert wal2.current_sequence == 3
+        
+        # Should be able to continue
+        seq = await wal2.append(
+            OperationType.UPDATE_LIBRARY,
+            resource_id,
+            {"recovered": True}
+        )
+        assert seq == 4
+        
+        await wal2.close()
