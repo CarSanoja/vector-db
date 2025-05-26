@@ -9,6 +9,7 @@ from src.core.indexes.factory import IndexFactory
 from src.core.indexes.base import VectorIndex 
 from src.core.logging import get_logger
 from .interface import ILibraryService 
+from src.infrastructure.locks import lock_manager, LockLevel
 
 logger = get_logger(__name__)
 
@@ -37,7 +38,7 @@ class LibraryService(ILibraryService):
                 conflict_type="duplicate_name"
             )
 
-        library = Library(
+        library_entity = Library(
             name=name,
             description=description,
             index_type=index_type,
@@ -45,14 +46,14 @@ class LibraryService(ILibraryService):
             metadata=metadata or {}
         )
 
-        try:
-            index_instance = IndexFactory.create_index(index_type, dimension)
-            self._indexes[library.id] = index_instance
-        except Exception as e:
-            logger.error(f"Failed to create index for library {library.name}: {e}", exc_info=True)
-            raise ValidationError(f"Failed to create index: {str(e)}")
+        async with lock_manager.acquire_write(LockLevel.LIBRARY, library_entity.id): 
+            try:
+                index_instance = IndexFactory.create_index(index_type, dimension)
+                self._indexes[library_entity.id] = index_instance 
+            except Exception as e:
+                raise
 
-        created = await self.repository.create(library)
+            created = await self.repository.create(library_entity)
 
         logger.info(
             "Created library",
@@ -68,14 +69,15 @@ class LibraryService(ILibraryService):
 
         if library and library_id not in self._indexes:
             logger.warning(f"Index for library {library_id} not found in memory cache. Recreating.")
-            try:
-                index_instance = IndexFactory.create_index(
-                    library.index_type,
-                    library.dimension
-                )
-                self._indexes[library_id] = index_instance
-            except Exception as e:
-                logger.error(f"Failed to recreate index for library {library_id}: {e}", exc_info=True)
+            async with lock_manager.acquire_write(LockLevel.LIBRARY, library_id):
+                try:
+                    index_instance = IndexFactory.create_index(
+                        library.index_type,
+                        library.dimension
+                    )
+                    self._indexes[library_id] = index_instance
+                except Exception as e:
+                    logger.error(f"Failed to recreate index for library {library_id}: {e}", exc_info=True)
         return library
 
     def get_index(self, library_id: UUID) -> Optional[VectorIndex]:
@@ -157,20 +159,21 @@ class LibraryService(ILibraryService):
 
     async def delete_library(self, library_id: UUID) -> bool:
         """Delete a library and all its contents."""
-        library = await self.repository.get(library_id) 
-        if not library:
-            logger.warning(f"Attempted to delete non-existent library: {library_id}")
-            return False
+        async with lock_manager.acquire_write(LockLevel.LIBRARY, library_id):
+            library = await self.repository.get(library_id) 
+            if not library:
+                logger.warning(f"Attempted to delete non-existent library: {library_id}")
+                return False
 
-        if library_id in self._indexes:
-            index_instance = self._indexes[library_id]
-            if hasattr(index_instance, 'clear') and callable(getattr(index_instance, 'clear')):
-                try:
-                    index_instance.clear() 
-                except Exception as e:
-                    logger.error(f"Error clearing index for library {library_id} during deletion: {e}", exc_info=True)
-            del self._indexes[library_id]
-            logger.info(f"Removed index for library {library_id} from memory.")
+            if library_id in self._indexes:
+                index_instance = self._indexes[library_id]
+                if hasattr(index_instance, 'clear') and callable(getattr(index_instance, 'clear')):
+                    try:
+                        index_instance.clear() 
+                    except Exception as e:
+                        logger.error(f"Error clearing index for library {library_id} during deletion: {e}", exc_info=True)
+                del self._indexes[library_id]
+                logger.info(f"Removed index for library {library_id} from memory.")
 
         deleted = await self.repository.delete(library_id)
         if deleted:
