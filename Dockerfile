@@ -26,6 +26,7 @@ WORKDIR /app
 COPY pyproject.toml poetry.lock* ./
 
 # Install dependencies
+RUN poetry lock
 RUN poetry install --no-interaction --no-ansi --no-root --only main
 
 # Production stage
@@ -33,8 +34,7 @@ FROM python:3.11-slim
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PATH="/app/.venv/bin:$PATH"
+    PYTHONUNBUFFERED=1
 
 # Create non-root user
 RUN useradd -m -u 1000 appuser && \

@@ -4,7 +4,6 @@ version = "0.1.0"
 description = "A REST API for indexing and querying documents in a Vector Database"
 authors = ["Your Name <your.email@example.com>"]
 readme = "README.md"
-python = "^3.11"
 
 [tool.poetry.dependencies]
 python = "^3.11"
