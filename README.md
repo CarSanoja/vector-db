@@ -96,6 +96,7 @@ c.  **Environment Variables:**
    Activate your Poetry environment (`poetry shell` or `source .venv/bin/activate`) and then run:
    ```bash
    uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+   ```
 
 Or using your Makefile (from your current README draft):
 Bash
@@ -153,8 +154,97 @@ Bash
 
 ./examples/run_api_tests.sh examples/api/01_manage_libraries.py
 
+API Example with Real Cohere Embeddings
+
+This script demonstrates creating and searching with embeddings generated via the Cohere API.
+The API server must be running, and your COHERE_API_KEY must be set in your .env file or environment.
+Bash
+
+# From the project root
+./examples/run_cohere_example.sh
+
+Example Showcase: Using Real Embeddings with Cohere
+
+The examples/api/04_cohere_real_embeddings.py script (executed via ./examples/run_cohere_example.sh) demonstrates a full workflow:
+
+* Connecting to the Cohere API to generate vector embeddings for sample text.
+* Creating a library in your Vector DB API with dimensions matching the Cohere embeddings.
+* Adding the texts and their corresponding Cohere embeddings as chunks to your library via API.
+* Generating a query embedding for a sample question using Cohere.
+* Searching your library with this query embedding.
+
+```
+=== Running Cohere Real Embeddings API Example ===
+Changed directory to project root: /path/to/vector-db
+...
+✓ Python environment ready.
+...
+✓ API server is responsive.
+...
+✓ COHERE_API_KEY environment variable appears to be available for the script.
+...
+--- Running Python Example: 04_cohere_real_embeddings.py ---
+...
+========== STARTING COHERE REAL EMBEDDINGS API EXAMPLE ==========
+
+========== CREATING LIBRARY: COHERE-DEMO-LIB-... (DIMENSION: 384) ==========
+Status Code: 201
+{
+  "id": "b9ddb9e4-4fd6-43fe-9326-955673976ea2",
+  "name": "Cohere-Demo-Lib-83d25a",
+  "dimension": 384,
+  "index_type": "HNSW",
+  ...
+  "created_at": "2025-05-26T04:15:49.687882",
+  "updated_at": "2025-05-26T04:15:49.690407"
+}
+Generating embeddings with Cohere for 5 text(s) (model: embed-english-light-v3.0, type: search_document)...
+Embeddings generated successfully.
+
+========== ADDING 5 CHUNKS IN BULK TO LIBRARY: B9DDB9E4-4FD6-43FE-9326-955673976EA2 ==========
+Status Code: 201
+[
+  {
+    "id": "c283924a-0d73-48c9-9231-f4a85d6e7df6",
+    "content": "The vibrant city of Barcelona is known for its unique architecture and lively atmosphere.",
+    ...
+  },
+  ...
+]
+
+========== TRIGGERING INDEX BUILD FOR LIBRARY: B9DDB9E4-4FD6-43FE-9326-955673976EA2 ==========
+Status Code: 202
+{
+  "message": "Index rebuild initiated",
+  "library_id": "b9ddb9e4-4fd6-43fe-9326-955673976ea2",
+  "status": "pending"
+}
+Waiting briefly to allow potential indexing or propagation...
+Generating embeddings with Cohere for 1 text(s) (model: embed-english-light-v3.0, type: search_query)...
+Embeddings generated successfully.
+
+========== SEARCHING IN LIBRARY: B9DDB9E4-4FD6-43FE-9326-955673976EA2 (TOP 3 RESULTS) ==========
+Status Code: 200
+{
+  "results": [], // Note: Search results depend heavily on query, indexed content, and embedding model.
+  "query_time_ms": 0.0050067901611328125,
+  "total_found": 0
+}
+
+========== SEARCH RESULTS FOR QUERY: "WHAT ARE SOME FAMOUS SPANISH FOODS AND LANDMARKS?" ==========
+No search results found.
+
+✓ Cohere Real Embeddings API Example completed successfully!
+
+========== DELETING LIBRARY (CLEANUP): B9DDB9E4-4FD6-43FE-9326-955673976EA2 ==========
+Status Code: (204)
+...
+========== EXAMPLE FLOW FINISHED ==========
+```
+
 🏗️ Project Structure Overview
 
+```
 .
 ├── Dockerfile            # Defines the Docker image for the application
 ├── docker-compose.yml    # Manages multi-container application (app, redis, etc.)
@@ -184,6 +274,7 @@ Bash
 │   └── services/         # Service layer orchestrating business logic
 ├── tests/                # Unit and integration tests (e.g., using Pytest)
 └── ...                   # Other project files (.gitignore, linting configs, etc.)
+```
 
 🛠️ Development Workflow
 
@@ -198,18 +289,18 @@ Common development commands (often available via Makefile):
 
 🐳 Docker Operations
 
-    Build Docker Image: make docker-build (or docker compose build vector-db)
-    Run Application with Docker Compose: make docker-run (or docker compose up)
-    Stop Docker Compose Services: make docker-stop (or docker compose down)
-    View Logs: docker compose logs -f vector-db
+* Build Docker Image: make docker-build (or docker compose build vector-db)
+* Run Application with Docker Compose: make docker-run (or docker compose up)
+* Stop Docker Compose Services: make docker-stop (or docker compose down)
+* View Logs: docker compose logs -f vector-db
 
 🔑 Key Design Choices & Constraints Met
 
-    Custom Indexing Algorithms: Vector indexes (LSH, HNSW, KD-Tree) are implemented from scratch using Python and NumPy, adhering to the constraint of not using pre-built external vector search libraries. (Detailed explanations in docs/ARCHITECTURE.md).
-    Concurrency Control: A custom ReadWriteLock and LockManager with hierarchical locking manage concurrent access to shared resources, crucial for in-memory operations and preventing data races. (Design explained in docs/ARCHITECTURE.md).
-    Persistence Layer: Implemented persistence with Write-Ahead Logging (WAL) and snapshotting for data durability (Extra Point). (Design explained in docs/ARCHITECTURE.md).
-    Service-Oriented Architecture: Logic is layered (API -> Services -> Repositories/Domain) for better separation of concerns and testability.
-    Typed & Pythonic Code: Emphasis on static typing and Pythonic conventions.
+* Custom Indexing Algorithms: Vector indexes (LSH, HNSW, KD-Tree) are implemented from scratch using Python and NumPy, adhering to the constraint of not using pre-built external vector search libraries. (Detailed explanations in docs/ARCHITECTURE.md).
+* Concurrency Control: A custom ReadWriteLock and LockManager with hierarchical locking manage concurrent access to shared resources, crucial for in-memory operations and preventing data races. (Design explained in docs/ARCHITECTURE.md).
+* Persistence Layer: Implemented persistence with Write-Ahead Logging (WAL) and snapshotting for data durability (Extra Point). (Design explained in docs/ARCHITECTURE.md).
+* Service-Oriented Architecture: Logic is layered (API -> Services -> Repositories/Domain) for better separation of concerns and testability.
+* Typed & Pythonic Code: Emphasis on static typing and Pythonic conventions.
 
 🏛️ Architecture
 
