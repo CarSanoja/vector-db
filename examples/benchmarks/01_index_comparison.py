@@ -7,8 +7,23 @@ import asyncio
 import time
 import numpy as np
 from typing import List, Tuple
-import matplotlib.pyplot as plt
-from tabulate import tabulate
+from uuid import uuid4
+from pathlib import Path
+
+# Try to import optional dependencies
+try:
+    from tabulate import tabulate
+    TABULATE_AVAILABLE = True
+except ImportError:
+    TABULATE_AVAILABLE = False
+    print("Note: Install tabulate for better formatting: pip install tabulate")
+
+try:
+    import matplotlib.pyplot as plt
+    MATPLOTLIB_AVAILABLE = False
+except ImportError:
+    MATPLOTLIB_AVAILABLE = False
+    print("Note: Install matplotlib for visualization: pip install matplotlib")
 
 from src.domain.entities.library import IndexType
 from src.core.indexes.factory import IndexFactory
@@ -60,10 +75,10 @@ async def benchmark_index(index_type: IndexType, vectors: List[np.ndarray],
     print("  Building index...")
     start = time.time()
     
-    for i, vector in enumerate(vectors):
-        index.add(i, vector)
+    # Add vectors using async interface
+    for vector in vectors:
+        await index.add(uuid4(), vector)
     
-    index.build()
     build_time = time.time() - start
     results["build_time"] = build_time
     print(f"  Build time: {build_time:.3f}s")
@@ -74,7 +89,7 @@ async def benchmark_index(index_type: IndexType, vectors: List[np.ndarray],
     
     for query in queries:
         start = time.time()
-        _ = index.search(query, k)
+        _ = await index.search(query, k)
         search_times.append(time.time() - start)
     
     results["avg_search_time"] = np.mean(search_times)
@@ -89,14 +104,15 @@ async def main():
     """Run index comparison benchmark."""
     print("=== Index Performance Comparison ===\n")
     
-    # Test configurations
+    # Test configurations (reduced for faster execution)
     configs = [
         (1000, 128),    # Small dataset
-        (10000, 128),   # Medium dataset
-        (50000, 128),   # Large dataset
+        # (5000, 128),    # Medium dataset (reduced from 10000)
+        # (10000, 128),   # Large dataset (reduced from 50000)
     ]
     
-    index_types = [IndexType.LSH, IndexType.HNSW, IndexType.KDTREE]
+    # Use correct enum values
+    index_types = [IndexType.LSH, IndexType.HNSW, IndexType.KD_TREE]
     
     all_results = []
     
@@ -117,24 +133,34 @@ async def main():
     # Display results table
     print("\n\n=== Summary Results ===\n")
     
-    table_data = []
-    for r in all_results:
-        table_data.append([
-            r["index_type"],
-            r["n_vectors"],
-            f"{r['build_time']:.3f}s",
-            f"{r['avg_search_time']*1000:.2f}ms",
-            f"{r['search_throughput']:.0f} q/s"
-        ])
+    if TABULATE_AVAILABLE:
+        table_data = []
+        for r in all_results:
+            table_data.append([
+                r["index_type"],
+                r["n_vectors"],
+                f"{r['build_time']:.3f}s",
+                f"{r['avg_search_time']*1000:.2f}ms",
+                f"{r['search_throughput']:.0f} q/s"
+            ])
+        
+        headers = ["Index Type", "Vectors", "Build Time", "Avg Search", "Throughput"]
+        print(tabulate(table_data, headers=headers, tablefmt="grid"))
+    else:
+        # Simple text output
+        print("Index Type | Vectors | Build Time | Avg Search | Throughput")
+        print("-" * 60)
+        for r in all_results:
+            print(f"{r['index_type']:10} | {r['n_vectors']:7} | {r['build_time']:7.3f}s | {r['avg_search_time']*1000:7.2f}ms | {r['search_throughput']:6.0f} q/s")
     
-    headers = ["Index Type", "Vectors", "Build Time", "Avg Search", "Throughput"]
-    print(tabulate(table_data, headers=headers, tablefmt="grid"))
+    # Plot results if matplotlib available
+    if MATPLOTLIB_AVAILABLE:
+        try:
+            plot_results(all_results)
+        except Exception as e:
+            print(f"\nError creating plots: {e}")
     
-    # Plot results (optional - requires matplotlib)
-    try:
-        plot_results(all_results)
-    except:
-        print("\n(Install matplotlib to see performance plots)")
+    print("\n✓ Benchmark complete!")
 
 
 def plot_results(results):
@@ -147,12 +173,20 @@ def plot_results(results):
     
     # Build time plot
     for idx_type in index_types:
-        build_times = [
-            next(r["build_time"] for r in results 
-                 if r["index_type"] == idx_type and r["n_vectors"] == size)
-            for size in sizes
-        ]
-        ax1.plot(sizes, build_times, marker='o', label=idx_type)
+        build_times = []
+        for size in sizes:
+            matching = [r for r in results 
+                       if r["index_type"] == idx_type and r["n_vectors"] == size]
+            if matching:
+                build_times.append(matching[0]["build_time"])
+            else:
+                build_times.append(None)
+        
+        valid_sizes = [s for s, t in zip(sizes, build_times) if t is not None]
+        valid_times = [t for t in build_times if t is not None]
+        
+        if valid_times:
+            ax1.plot(valid_sizes, valid_times, marker='o', label=idx_type)
     
     ax1.set_xlabel('Number of Vectors')
     ax1.set_ylabel('Build Time (seconds)')
@@ -163,12 +197,20 @@ def plot_results(results):
     
     # Search throughput plot
     for idx_type in index_types:
-        throughputs = [
-            next(r["search_throughput"] for r in results 
-                 if r["index_type"] == idx_type and r["n_vectors"] == size)
-            for size in sizes
-        ]
-        ax2.plot(sizes, throughputs, marker='o', label=idx_type)
+        throughputs = []
+        for size in sizes:
+            matching = [r for r in results 
+                       if r["index_type"] == idx_type and r["n_vectors"] == size]
+            if matching:
+                throughputs.append(matching[0]["search_throughput"])
+            else:
+                throughputs.append(None)
+        
+        valid_sizes = [s for s, t in zip(sizes, throughputs) if t is not None]
+        valid_throughputs = [t for t in throughputs if t is not None]
+        
+        if valid_throughputs:
+            ax2.plot(valid_sizes, valid_throughputs, marker='o', label=idx_type)
     
     ax2.set_xlabel('Number of Vectors')
     ax2.set_ylabel('Queries per Second')
@@ -178,8 +220,12 @@ def plot_results(results):
     ax2.set_xscale('log')
     
     plt.tight_layout()
-    plt.savefig('examples/benchmarks/index_comparison.png')
-    print("\nPlot saved to: examples/benchmarks/index_comparison.png")
+    
+    # Save to examples/benchmarks directory
+    output_dir = Path('examples/benchmarks')
+    output_dir.mkdir(exist_ok=True)
+    plt.savefig(output_dir / 'index_comparison.png')
+    print(f"\nPlot saved to: {output_dir / 'index_comparison.png'}")
 
 
 if __name__ == "__main__":

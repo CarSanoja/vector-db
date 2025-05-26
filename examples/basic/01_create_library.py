@@ -25,7 +25,7 @@ async def main():
     index_types = [
         (IndexType.LSH, 128, "Fast approximate search using LSH"),
         (IndexType.HNSW, 256, "High accuracy with HNSW graphs"),
-        (IndexType.KDTREE, 64, "Exact search with KD-Tree")
+        (IndexType.KD_TREE, 64, "Exact search with KD-Tree")
     ]
     
     for index_type, dimension, description in index_types:

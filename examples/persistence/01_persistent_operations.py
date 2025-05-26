@@ -8,6 +8,10 @@ import shutil
 from pathlib import Path
 from uuid import uuid4
 import numpy as np
+import os
+
+# Set default persistence directory for examples
+os.environ['VECTOR_DB_DATA_DIR'] = str(Path.cwd() / 'examples' / 'data')
 
 from src.services.persistence_aware_service import PersistentServiceFactory
 from src.infrastructure.persistence.recovery import get_recovery_service
@@ -15,18 +19,45 @@ from src.domain.entities.library import Library, IndexType
 from datetime import datetime, UTC
 
 
+async def cleanup_persistence_data():
+    """Clean up all persistence data before running example."""
+    data_root = Path.cwd() / 'examples' / 'data'
+    
+    # Clean up both settings-based and default directories
+    dirs_to_clean = [
+        data_root / 'wal',
+        data_root / 'snapshots',
+        Path('data') / 'wal',
+        Path('data') / 'snapshots',
+    ]
+    
+    for dir_path in dirs_to_clean:
+        if dir_path.exists():
+            shutil.rmtree(dir_path)
+            print(f"Cleaned up: {dir_path}")
+    
+    # Ensure the example data directory exists
+    data_root.mkdir(parents=True, exist_ok=True)
+
+
 async def main():
     """Demonstrate persistence and recovery."""
     print("=== Persistence and Recovery Example ===\n")
     
     # Clean up any existing data
-    data_dir = Path("examples/data")
-    if data_dir.exists():
-        shutil.rmtree(data_dir)
-    data_dir.mkdir(parents=True, exist_ok=True)
+    await cleanup_persistence_data()
+    
+    # Reset the PersistentServiceFactory to ensure clean state
+    PersistentServiceFactory._initialized = False
+    PersistentServiceFactory._persistence_manager = None
+    PersistentServiceFactory._library_repository = None
+    PersistentServiceFactory._chunk_repository = None
+    PersistentServiceFactory._library_service = None
+    PersistentServiceFactory._chunk_service = None
+    PersistentServiceFactory._search_service = None
     
     # Phase 1: Create data with persistence
-    print("Phase 1: Creating data with persistence\n")
+    print("\nPhase 1: Creating data with persistence\n")
     
     # Initialize services with persistence
     await PersistentServiceFactory.initialize()
@@ -61,6 +92,11 @@ async def main():
     
     # Phase 2: Simulate crash and recovery
     print("\n\nPhase 2: Simulating crash and recovery\n")
+    
+    # Reset factory again to simulate fresh start
+    PersistentServiceFactory._initialized = False
+    PersistentServiceFactory._persistence_manager = None
+    PersistentServiceFactory._library_repository = None
     
     # Re-initialize (simulating application restart)
     await PersistentServiceFactory.initialize()

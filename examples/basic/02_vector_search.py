@@ -11,10 +11,11 @@ from src.infrastructure.repositories.in_memory import (
     InMemoryLibraryRepository,
     InMemoryChunkRepository
 )
-from src.services import LibraryService, ChunkService, SearchService
+from src.services.library_service import LibraryService
+from src.services.chunk_service import ChunkService
+from src.services.search_service import SearchService
 from src.domain.entities.library import Library, IndexType
 from src.domain.entities.chunk import Chunk
-from src.core.indexes.factory import IndexFactory
 
 
 async def create_sample_embeddings(dimension: int, count: int):
@@ -27,7 +28,10 @@ async def create_sample_embeddings(dimension: int, count: int):
         cluster = i % clusters
         # Base vector for cluster
         base = np.random.randn(dimension) * 0.1
-        base[cluster * 10:(cluster + 1) * 10] += 1.0  # Make clusters distinguishable
+        # Make clusters distinguishable (but ensure we don't exceed dimension)
+        cluster_start = min(cluster * 10, dimension - 10)
+        cluster_end = min(cluster_start + 10, dimension)
+        base[cluster_start:cluster_end] += 1.0
         
         # Add noise
         vec = base + np.random.randn(dimension) * 0.3
@@ -46,10 +50,15 @@ async def main():
     library_repo = InMemoryLibraryRepository()
     chunk_repo = InMemoryChunkRepository()
     
-    # Initialize services
+    # Initialize services in correct order
+    # 1. LibraryService first (no dependencies on other services)
     library_service = LibraryService(library_repo)
-    chunk_service = ChunkService(chunk_repo, library_repo)
-    search_service = SearchService(chunk_repo, library_repo, IndexFactory())
+    
+    # 2. ChunkService needs LibraryService
+    chunk_service = ChunkService(chunk_repo, library_service)
+    
+    # 3. SearchService needs LibraryService
+    search_service = SearchService(chunk_repo, library_service)
     
     # Create a library
     library = await library_service.create_library(
@@ -74,9 +83,9 @@ async def main():
             embedding=embedding.tolist(),
             metadata={
                 "doc_id": f"doc_{i // 10}",
-                "chunk_index": i % 10,
+                "chunk_index": i,
                 "category": f"cluster_{i % 3}",
-                "importance": np.random.rand()
+                "importance": float(np.random.rand())
             }
         )
         chunks.append(chunk)
@@ -85,7 +94,7 @@ async def main():
     
     # Build index
     print("Building search index...")
-    await search_service.build_index(library.id)
+    await library_service.build_index(library.id)
     
     # Perform searches
     print("\n=== Performing Searches ===\n")
@@ -100,9 +109,9 @@ async def main():
     
     print("Search 1: Similar to first chunk")
     for i, result in enumerate(results):
-        print(f"  {i+1}. Chunk {result.chunk.chunk_index} from {result.chunk.metadata['doc_id']}")
+        print(f"  {i+1}. Chunk {result.metadata.get('chunk_index', 'N/A')} from {result.metadata['doc_id']}")
         print(f"     Distance: {result.distance:.4f}")
-        print(f"     Category: {result.chunk.metadata['category']}")
+        print(f"     Category: {result.metadata['category']}")
     
     # Search 2: With metadata filter
     print("\n\nSearch 2: Filter by category")
@@ -114,8 +123,8 @@ async def main():
     )
     
     for i, result in enumerate(filtered_results):
-        print(f"  {i+1}. {result.chunk.content}")
-        print(f"     Category: {result.chunk.metadata['category']}")
+        print(f"  {i+1}. {result.content}")
+        print(f"     Category: {result.metadata['category']}")
         print(f"     Distance: {result.distance:.4f}")
 
 

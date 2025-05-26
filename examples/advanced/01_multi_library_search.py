@@ -12,9 +12,10 @@ from src.infrastructure.repositories.in_memory import (
     InMemoryLibraryRepository,
     InMemoryChunkRepository
 )
-from src.services import LibraryService, ChunkService, SearchService
+from src.services.library_service import LibraryService
+from src.services.chunk_service import ChunkService
+from src.services.search_service import SearchService
 from src.domain.entities.library import Library, IndexType
-from src.core.indexes.factory import IndexFactory
 
 
 async def create_themed_library(
@@ -65,12 +66,12 @@ async def create_themed_library(
         # Generate embeddings with theme bias
         embedding = np.random.randn(dimension).astype(np.float32)
         
-        # Add theme-specific signal
-        if theme == "technology":
+        # Add theme-specific signal (ensure we don't exceed dimension)
+        if theme == "technology" and dimension >= 10:
             embedding[0:10] += 0.5
-        elif theme == "science":
+        elif theme == "science" and dimension >= 20:
             embedding[10:20] += 0.5
-        elif theme == "literature":
+        elif theme == "literature" and dimension >= 30:
             embedding[20:30] += 0.5
             
         # Normalize
@@ -93,13 +94,14 @@ async def main():
     """Demonstrate multi-library search."""
     print("=== Multi-Library Search Example ===\n")
     
-    # Initialize services
+    # Initialize repositories
     library_repo = InMemoryLibraryRepository()
     chunk_repo = InMemoryChunkRepository()
     
+    # Initialize services in correct order
     library_service = LibraryService(library_repo)
-    chunk_service = ChunkService(chunk_repo, library_repo)
-    search_service = SearchService(chunk_repo, library_repo, IndexFactory())
+    chunk_service = ChunkService(chunk_repo, library_service)
+    search_service = SearchService(chunk_repo, library_service)
     
     # Create themed libraries
     print("Creating themed libraries...")
@@ -125,7 +127,7 @@ async def main():
     # Build indexes
     print("\nBuilding indexes...")
     for lib in [tech_lib, science_lib, lit_lib]:
-        await search_service.build_index(lib.id)
+        await library_service.build_index(lib.id)
     
     # Perform multi-library searches
     print("\n=== Multi-Library Search Results ===\n")
@@ -157,16 +159,22 @@ async def main():
             )
             
             for result in results:
-                result.library_name = lib.name
-                all_results.append(result)
+                # Add library name to result for display
+                result_with_lib = {
+                    'library_name': lib.name,
+                    'content': result.content,
+                    'distance': result.distance,
+                    'metadata': result.metadata
+                }
+                all_results.append(result_with_lib)
         
         # Sort by distance
-        all_results.sort(key=lambda x: x.distance)
+        all_results.sort(key=lambda x: x['distance'])
         
         # Display top 5 results across all libraries
         for i, result in enumerate(all_results[:5]):
-            print(f"  {i+1}. [{result.library_name}] {result.chunk.content[:50]}...")
-            print(f"     Distance: {result.distance:.4f}")
+            print(f"  {i+1}. [{result['library_name']}] {result['content'][:50]}...")
+            print(f"     Distance: {result['distance']:.4f}")
 
 
 if __name__ == "__main__":
