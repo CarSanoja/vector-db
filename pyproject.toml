@@ -7,17 +7,18 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.11"
-fastapi = "^0.104.0"
-uvicorn = {extras = ["standard"], version = "^0.24.0"}
+fastapi = "^0.115.12"
+uvicorn = {extras = ["standard"], version = "^0.34.2"}
 pydantic = "^2.4.0"
 pydantic-settings = "^2.0.0"
-numpy = "^1.26.0"
-httpx = "^0.25.0"
+numpy = "^2.2.6"
+httpx = "^0.28.1"
 python-dotenv = "^1.0.0"
-structlog = "^23.2.0"
-prometheus-client = "^0.18.0"
-redis = "^5.0.0"
+structlog = "^25.3.0"
+prometheus-client = "^0.22.0"
+redis = "^6.1.0"
 msgpack = "^1.0.7"
+cohere = "^5.15.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"
@@ -28,7 +29,7 @@ black = "^23.11.0"
 ruff = "^0.1.5"
 mypy = "^1.7.0"
 pre-commit = "^3.5.0"
-httpx = "^0.25.0"
+httpx = "^0.28.1"
 faker = "^20.0.0"
 
 [build-system]
