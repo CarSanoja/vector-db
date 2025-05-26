@@ -5,7 +5,7 @@ import gzip
 import hashlib
 import shutil
 from typing import Optional, List, Dict, Any
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 import uuid
 import aiofiles
@@ -13,6 +13,7 @@ import msgpack
 from asyncio import Lock
 
 from .interface import ISnapshotManager, SnapshotMetadata
+from src.infrastructure.persistence.serialization.serializers import StateSerializer
 from src.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -47,10 +48,19 @@ class FileSnapshotManager(ISnapshotManager):
         """Create a new snapshot."""
         async with self.write_lock:
             snapshot_id = f"snapshot_{sequence_number}_{uuid.uuid4().hex[:8]}"
-            timestamp = datetime.utcnow()
+            timestamp = datetime.now(UTC)  # Fixed deprecation warning
             
-            # Serialize state
-            serialized = msgpack.packb(state, use_bin_type=True)
+            # Serialize state using StateSerializer for proper handling of numpy arrays
+            try:
+                # If state contains serialized data already, use it directly
+                if 'serialized' in state and isinstance(state['serialized'], bytes):
+                    serialized = state['serialized']
+                else:
+                    # Otherwise, serialize the state
+                    serialized = StateSerializer.serialize_state(state)
+            except Exception:
+                # Fallback to msgpack if StateSerializer fails
+                serialized = msgpack.packb(state, use_bin_type=True)
             
             # Compress if enabled
             if self.use_compression:
@@ -128,7 +138,12 @@ class FileSnapshotManager(ISnapshotManager):
             data = gzip.decompress(data)
         
         # Deserialize
-        state = msgpack.unpackb(data, raw=False)
+        try:
+            # Try StateSerializer first
+            state = StateSerializer.deserialize_state(data)
+        except Exception:
+            # Fallback to msgpack
+            state = msgpack.unpackb(data, raw=False)
         
         logger.info(f"Snapshot loaded", snapshot_id=snapshot_id)
         return state
@@ -211,10 +226,16 @@ class FileSnapshotManager(ISnapshotManager):
         async with aiofiles.open(meta_file, 'r') as f:
             data = json.loads(await f.read())
         
+        # Parse timestamp and ensure it's timezone-aware
+        timestamp = datetime.fromisoformat(data["timestamp"])
+        if timestamp.tzinfo is None:
+            # If naive datetime, assume UTC
+            timestamp = timestamp.replace(tzinfo=UTC)
+        
         return SnapshotMetadata(
             snapshot_id=data["snapshot_id"],
             sequence_number=data["sequence_number"],
-            timestamp=datetime.fromisoformat(data["timestamp"]),
+            timestamp=timestamp,
             size_bytes=data["size_bytes"],
             checksum=data["checksum"],
             description=data.get("description")

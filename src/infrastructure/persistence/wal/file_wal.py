@@ -4,7 +4,7 @@ import json
 import hashlib
 import asyncio
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 import uuid
 import struct
@@ -34,7 +34,8 @@ class FileWAL(IWriteAheadLog):
         self.segment_size = segment_size
         self.current_sequence = 0
         self.current_segment = 0
-        self.current_file: Optional[BinaryIO] = None
+        self.current_file = None
+        self.current_file_path = None
         self.write_lock = Lock()
         
         # Create directory if it doesn't exist
@@ -57,7 +58,7 @@ class FileWAL(IWriteAheadLog):
             
             entry = WALEntry(
                 sequence_number=self.current_sequence,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(UTC),
                 operation_type=operation_type,
                 resource_id=resource_id,
                 data=data,
@@ -111,14 +112,16 @@ class FileWAL(IWriteAheadLog):
             # Flush current segment
             if self.current_file:
                 await self.current_file.flush()
-                os.fsync(self.current_file.fileno())
+                await asyncio.get_event_loop().run_in_executor(
+                    None, os.fsync, self.current_file.fileno()
+                )
             
             # Write checkpoint marker
             checkpoint_file = self.wal_directory / f"checkpoint_{checkpoint_sequence}"
             async with aiofiles.open(checkpoint_file, 'w') as f:
                 await f.write(json.dumps({
                     "sequence": checkpoint_sequence,
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(UTC).isoformat(),
                     "segment": self.current_segment
                 }))
             
@@ -132,21 +135,41 @@ class FileWAL(IWriteAheadLog):
             if f.is_file()
         ])
         
+        current_file_deleted = False
+        
         for segment_file in segments:
             # Read segment to check sequences
             entries = await self._read_segment(segment_file)
             if not entries:
                 continue
                 
-            # If all entries are before truncation point, delete segment
-            if all(e.sequence_number <= up_to_sequence for e in entries):
+            # Check if we need to keep any entries
+            remaining = [e for e in entries if e.sequence_number > up_to_sequence]
+            
+            if not remaining:
+                # All entries are before truncation point, delete segment
+                
+                # Check if this is the current file
+                if self.current_file_path and segment_file == self.current_file_path:
+                    # Close current file before deleting
+                    if self.current_file:
+                        await self.current_file.close()
+                        self.current_file = None
+                    current_file_deleted = True
+                
                 segment_file.unlink()
-                logger.info(f"Truncated segment {segment_file.name}")
+                logger.info(f"Truncated entire segment {segment_file.name}")
+            elif len(remaining) < len(entries):
+                # Some entries need to be kept - rewrite segment
+                await self._rewrite_segment(segment_file, remaining)
+                logger.info(f"Partially truncated segment {segment_file.name}, kept {len(remaining)} entries")
             else:
-                # Partial truncation - rewrite segment
-                remaining = [e for e in entries if e.sequence_number > up_to_sequence]
-                if remaining:
-                    await self._rewrite_segment(segment_file, remaining)
+                # All entries are after truncation point, keep segment as is
+                logger.info(f"Kept segment {segment_file.name} unchanged")
+        
+        # If we deleted the current file, open a new one
+        if current_file_deleted:
+            await self._open_current_segment()
     
     async def replay(self, from_sequence: int = 0) -> int:
         """Replay entries from a sequence number."""
@@ -172,8 +195,9 @@ class FileWAL(IWriteAheadLog):
         checkpoints = sorted(self.wal_directory.glob("checkpoint_*"))
         if checkpoints:
             latest_checkpoint = checkpoints[-1]
-            with open(latest_checkpoint, 'r') as f:
-                checkpoint_data = json.load(f)
+            async with aiofiles.open(latest_checkpoint, 'r') as f:
+                content = await f.read()
+                checkpoint_data = json.loads(content)
                 self.current_sequence = checkpoint_data["sequence"]
                 self.current_segment = checkpoint_data["segment"]
         
@@ -188,18 +212,32 @@ class FileWAL(IWriteAheadLog):
     async def _open_current_segment(self) -> None:
         """Open the current segment for writing."""
         segment_path = self.wal_directory / f"wal_{self.current_segment:08d}.log"
-        self.current_file = open(segment_path, 'ab')
+        self.current_file_path = segment_path
         
-        # Write magic header if new file
-        if self.current_file.tell() == 0:
-            self.current_file.write(self.MAGIC_HEADER)
+        # Check if file exists and has content
+        if segment_path.exists() and segment_path.stat().st_size > 0:
+            # Verify it has the magic header
+            async with aiofiles.open(segment_path, 'rb') as f:
+                header = await f.read(8)
+                if header != self.MAGIC_HEADER:
+                    logger.warning(f"Invalid magic header in {segment_path}, creating new file")
+                    # Invalid file, recreate it
+                    self.current_file = await aiofiles.open(segment_path, 'wb')
+                    await self.current_file.write(self.MAGIC_HEADER)
+                else:
+                    # Valid file, open in append mode
+                    self.current_file = await aiofiles.open(segment_path, 'ab')
+        else:
+            # Create new file and write header
+            self.current_file = await aiofiles.open(segment_path, 'wb')
+            await self.current_file.write(self.MAGIC_HEADER)
     
     async def _should_rotate_segment(self, entry_size: int) -> bool:
         """Check if segment should be rotated."""
-        if not self.current_file:
+        if not self.current_file_path:
             return True
         
-        current_size = self.current_file.tell()
+        current_size = self.current_file_path.stat().st_size if self.current_file_path.exists() else 0
         return current_size + entry_size > self.segment_size
     
     async def _rotate_segment(self) -> None:
@@ -212,13 +250,16 @@ class FileWAL(IWriteAheadLog):
     
     def _serialize_entry(self, entry: WALEntry) -> bytes:
         """Serialize a WAL entry to bytes."""
+        # Use a custom JSON encoder that handles UUIDs and other types
+        from src.infrastructure.persistence.serialization.serializers import ExtendedJSONEncoder
+        
         # Serialize data as JSON
         data_json = json.dumps({
             "operation_type": entry.operation_type.value,
             "resource_id": str(entry.resource_id),
             "timestamp": entry.timestamp.isoformat(),
             "data": entry.data
-        })
+        }, cls=ExtendedJSONEncoder)
         data_bytes = data_json.encode('utf-8')
         
         # Create header: sequence(4) + timestamp(8) + data_len(4) + checksum(16)
@@ -234,18 +275,26 @@ class FileWAL(IWriteAheadLog):
     
     async def _write_entry(self, serialized: bytes) -> None:
         """Write serialized entry to current segment."""
-        self.current_file.write(serialized)
+        if not self.current_file:
+            # If no current file, open one
+            await self._open_current_segment()
+        
+        await self.current_file.write(serialized)
         await self.current_file.flush()
     
     async def _read_segment(self, segment_file: Path) -> List[WALEntry]:
         """Read all entries from a segment."""
         entries = []
         
+        # Check if file is empty
+        if segment_file.stat().st_size == 0:
+            return entries
+        
         async with aiofiles.open(segment_file, 'rb') as f:
             # Read and verify magic header
             magic = await f.read(8)
-            if magic != self.MAGIC_HEADER:
-                logger.error(f"Invalid WAL segment: {segment_file}")
+            if len(magic) < 8 or magic != self.MAGIC_HEADER:
+                logger.error(f"Invalid or missing magic header in WAL segment: {segment_file}")
                 return entries
             
             while True:
@@ -299,5 +348,8 @@ class FileWAL(IWriteAheadLog):
     
     def _calculate_checksum(self, entry: WALEntry) -> str:
         """Calculate checksum for an entry."""
-        data = f"{entry.sequence_number}:{entry.operation_type.value}:{entry.resource_id}:{json.dumps(entry.data)}"
+        # Use a custom JSON encoder that handles UUIDs and other types
+        from src.infrastructure.persistence.serialization.serializers import ExtendedJSONEncoder
+        data_json = json.dumps(entry.data, cls=ExtendedJSONEncoder)
+        data = f"{entry.sequence_number}:{entry.operation_type.value}:{entry.resource_id}:{data_json}"
         return hashlib.md5(data.encode()).hexdigest()

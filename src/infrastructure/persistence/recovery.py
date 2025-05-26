@@ -1,11 +1,14 @@
-"""Recovery service for system state restoration."""
+"""Recovery service for system state restoration with proper WAL replay."""
 from typing import Dict, Any, Optional
 from datetime import datetime
 import asyncio
 
 from src.infrastructure.persistence.manager import PersistenceManager
+from src.infrastructure.persistence.wal.interface import OperationType
 from src.infrastructure.repositories.persistent_library_repository import PersistentLibraryRepository
 from src.core.logging import get_logger
+from src.domain.entities.library import Library
+import uuid
 
 logger = get_logger(__name__)
 
@@ -41,25 +44,38 @@ class RecoveryService:
             # Recover state from persistence
             state = await self.persistence_manager.recover_state()
             
-            # Restore repositories
+            # First restore from snapshot
             recovery_stats = {}
             
             for repo_name, repository in self.repositories:
                 if repo_name in state:
-                    logger.info(f"Restoring {repo_name} repository")
+                    logger.info(f"Restoring {repo_name} repository from snapshot")
                     await repository.restore_state(state[repo_name])
                     
                     if hasattr(repository, 'count'):
                         count = await repository.count()
                         recovery_stats[f"{repo_name}_count"] = count
             
+            # Then replay WAL operations to apply changes after snapshot
+            if 'operations' in state and state['operations']:
+                logger.info(f"Replaying {len(state['operations'])} WAL operations")
+                
+                for operation in state['operations']:
+                    await self._replay_operation(operation)
+            
+            # Get final counts after WAL replay
+            for repo_name, repository in self.repositories:
+                if hasattr(repository, 'count'):
+                    count = await repository.count()
+                    recovery_stats[f"{repo_name}_count_after_wal"] = count
+            
             # Calculate recovery time
             recovery_time = (datetime.utcnow() - start_time).total_seconds()
             
             recovery_stats.update({
                 'recovery_time_seconds': recovery_time,
-                'recovered_from_snapshot': 'snapshot_id' in state,
-                'wal_entries_replayed': state.get('operations', [])
+                'recovered_from_snapshot': bool([k for k in state.keys() if k != 'operations']),
+                'wal_entries_replayed': len(state.get('operations', []))
             })
             
             logger.info(
@@ -73,6 +89,54 @@ class RecoveryService:
         except Exception as e:
             logger.error(f"Recovery failed: {e}")
             raise
+    
+    async def _replay_operation(self, operation: Dict[str, Any]) -> None:
+        """Replay a single WAL operation."""
+        op_type = operation['type']
+        resource_id = uuid.UUID(operation['resource_id'])
+        data = operation['data']
+        
+        # Handle encoded entity format from MessagePackSerializer
+        if isinstance(data, dict) and '__entity__' in data:
+            # Extract the actual data from the encoded format
+            actual_data = data.get('data', {})
+        else:
+            actual_data = data
+        
+        if op_type == 'CREATE_LIBRARY' and self.library_repository:
+            # Ensure ID is set
+            if 'id' not in actual_data:
+                actual_data['id'] = str(resource_id)
+            
+            # Check if library already exists (from snapshot)
+            existing = await self.library_repository.get(resource_id)
+            if not existing:
+                library = Library(**actual_data)
+                # Directly add to repository without logging again
+                async with self.library_repository._lock:
+                    self.library_repository._libraries[library.id] = library
+                    self.library_repository._name_index[library.name] = library.id
+                logger.debug(f"Replayed CREATE_LIBRARY for {resource_id}")
+        
+        elif op_type == 'UPDATE_LIBRARY' and self.library_repository:
+            # Apply update to existing library
+            library = await self.library_repository.get(resource_id)
+            if library:
+                # Update library fields from data
+                for key, value in actual_data.items():
+                    if hasattr(library, key):
+                        setattr(library, key, value)
+                logger.debug(f"Replayed UPDATE_LIBRARY for {resource_id}")
+        
+        elif op_type == 'DELETE_LIBRARY' and self.library_repository:
+            # Remove library
+            async with self.library_repository._lock:
+                if resource_id in self.library_repository._libraries:
+                    library = self.library_repository._libraries[resource_id]
+                    del self.library_repository._libraries[resource_id]
+                    if library.name in self.library_repository._name_index:
+                        del self.library_repository._name_index[library.name]
+                logger.debug(f"Replayed DELETE_LIBRARY for {resource_id}")
     
     async def create_backup(self, description: Optional[str] = None) -> str:
         """Create a system backup."""

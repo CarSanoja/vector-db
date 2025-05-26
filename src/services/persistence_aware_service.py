@@ -89,6 +89,7 @@ class PersistentServiceFactory:
         # Setup recovery service
         recovery = get_recovery_service()
         recovery.library_repository = library_repo
+        recovery.repositories = [('libraries', library_repo)]
         
         # Recover state
         await recovery.recover_system()

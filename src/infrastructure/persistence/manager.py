@@ -1,7 +1,7 @@
 """Persistence manager that coordinates WAL and snapshots."""
 import asyncio
 from typing import Dict, Any, Optional, List
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from pathlib import Path
 import uuid
 
@@ -43,7 +43,7 @@ class PersistenceManager:
         self.auto_snapshot_interval = auto_snapshot_interval
         
         self.operations_since_checkpoint = 0
-        self.last_snapshot_time = datetime.utcnow()
+        self.last_snapshot_time = datetime.now(UTC)  # Fixed deprecation
         self.is_recovering = False
         
         # Background tasks
@@ -128,7 +128,7 @@ class PersistenceManager:
             description=description
         )
         
-        self.last_snapshot_time = datetime.utcnow()
+        self.last_snapshot_time = datetime.now(UTC)  # Fixed deprecation
         
         # Cleanup old snapshots
         await self.snapshot_manager.cleanup_old_snapshots()
@@ -158,16 +158,26 @@ class PersistenceManager:
                 )
                 
                 # Deserialize state
-                state = StateSerializer.deserialize_state(
-                    snapshot_data['serialized']
-                )
+                if 'serialized' in snapshot_data:
+                    # New format with serialized field
+                    state = StateSerializer.deserialize_state(
+                        snapshot_data['serialized']
+                    )
+                else:
+                    # Direct state format
+                    state = snapshot_data
                 
                 # Replay WAL from snapshot
                 replay_from = latest_snapshot.sequence_number + 1
             else:
                 logger.info("No snapshot found, replaying entire WAL")
-                state = {}
+                # Initialize empty state with operations list
+                state = {'operations': []}
                 replay_from = 0
+            
+            # Ensure operations list exists
+            if 'operations' not in state:
+                state['operations'] = []
             
             # Replay WAL entries
             entries = await self.wal.read(replay_from)
@@ -218,7 +228,7 @@ class PersistenceManager:
             try:
                 await asyncio.sleep(300)  # Check every 5 minutes
                 
-                time_since_snapshot = datetime.utcnow() - self.last_snapshot_time
+                time_since_snapshot = datetime.now(UTC) - self.last_snapshot_time
                 if time_since_snapshot >= self.auto_snapshot_interval:
                     # This would need access to current state
                     # In real implementation, this would be passed in

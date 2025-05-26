@@ -4,7 +4,7 @@ from uuid import UUID
 import asyncio
 
 from src.domain.entities.library import Library, IndexType
-from src.domain.repositories.library_repository import ILibraryRepository
+from src.domain.repositories.library import LibraryRepository  # Changed from ILibraryRepository
 from src.infrastructure.persistence.manager import get_persistence_manager
 from src.infrastructure.persistence.wal.interface import OperationType
 from src.infrastructure.persistence.serialization.serializers import MessagePackSerializer
@@ -13,7 +13,7 @@ from src.core.logging import get_logger
 logger = get_logger(__name__)
 
 
-class PersistentLibraryRepository(ILibraryRepository):
+class PersistentLibraryRepository(LibraryRepository):  # Changed from ILibraryRepository
     """Library repository with persistence support."""
     
     def __init__(self):
@@ -45,78 +45,80 @@ class PersistentLibraryRepository(ILibraryRepository):
             logger.info(f"Created library {library.id}")
             return library
     
-    async def get(self, library_id: UUID) -> Optional[Library]:
+    async def get(self, id: UUID) -> Optional[Library]:
         """Get library by ID."""
-        return self._libraries.get(library_id)
+        return self._libraries.get(id)
     
     async def get_by_name(self, name: str) -> Optional[Library]:
         """Get library by name."""
         library_id = self._name_index.get(name)
         return self._libraries.get(library_id) if library_id else None
     
-    async def update(self, library: Library) -> Optional[Library]:
+    async def update(self, id: UUID, entity: Library) -> Optional[Library]:
         """Update an existing library."""
         async with self._lock:
-            if library.id not in self._libraries:
+            if id not in self._libraries:
                 return None
             
-            old_library = self._libraries[library.id]
+            old_library = self._libraries[id]
             
             # Check name change
-            if old_library.name != library.name:
-                if library.name in self._name_index:
-                    raise ValueError(f"Library with name '{library.name}' already exists")
+            if old_library.name != entity.name:
+                if entity.name in self._name_index:
+                    raise ValueError(f"Library with name '{entity.name}' already exists")
                 
                 # Update name index
                 del self._name_index[old_library.name]
-                self._name_index[library.name] = library.id
+                self._name_index[entity.name] = entity.id
             
             # Log to WAL
             await self._persistence.log_operation(
                 OperationType.UPDATE_LIBRARY,
-                library.id,
-                MessagePackSerializer._encode_custom(library)
+                entity.id,
+                MessagePackSerializer._encode_custom(entity)
             )
             
             # Update in-memory state
-            self._libraries[library.id] = library
+            self._libraries[id] = entity
             
-            logger.info(f"Updated library {library.id}")
-            return library
+            logger.info(f"Updated library {id}")
+            return entity
     
-    async def delete(self, library_id: UUID) -> bool:
+    async def delete(self, id: UUID) -> bool:
         """Delete a library."""
         async with self._lock:
-            library = self._libraries.get(library_id)
+            library = self._libraries.get(id)
             if not library:
                 return False
             
             # Log to WAL
             await self._persistence.log_operation(
                 OperationType.DELETE_LIBRARY,
-                library_id,
+                id,
                 {'deleted': True}
             )
             
             # Update in-memory state
-            del self._libraries[library_id]
+            del self._libraries[id]
             del self._name_index[library.name]
             
-            logger.info(f"Deleted library {library_id}")
+            logger.info(f"Deleted library {id}")
             return True
     
-    async def list_all(
+    async def list(
         self,
-        index_type: Optional[IndexType] = None,
-        limit: Optional[int] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        limit: int = 100,
         offset: int = 0
     ) -> List[Library]:
         """List all libraries with optional filtering."""
         libraries = list(self._libraries.values())
         
-        # Filter by index type
-        if index_type:
-            libraries = [lib for lib in libraries if lib.index_type == index_type]
+        # Apply filters if provided
+        if filters:
+            if 'index_type' in filters:
+                index_type = filters['index_type']
+                libraries = [lib for lib in libraries if lib.index_type == index_type]
         
         # Sort by creation date (newest first)
         libraries.sort(key=lambda x: x.created_at, reverse=True)
@@ -129,8 +131,35 @@ class PersistentLibraryRepository(ILibraryRepository):
         
         return libraries
     
-    async def count(self) -> int:
+    async def list_by_index_type(self, index_type: str) -> List[Library]:
+        """List libraries by index type."""
+        return await self.list(filters={'index_type': index_type})
+    
+    async def update_stats(
+        self,
+        id: UUID,
+        total_documents: Optional[int] = None,
+        total_chunks: Optional[int] = None
+    ) -> Optional[Library]:
+        """Update library statistics."""
+        library = self._libraries.get(id)
+        if not library:
+            return None
+        
+        # Update stats
+        if total_documents is not None:
+            library.total_documents = total_documents
+        if total_chunks is not None:
+            library.total_chunks = total_chunks
+        
+        # Use regular update to persist
+        return await self.update(id, library)
+    
+    async def count(self, filters: Optional[Dict[str, Any]] = None) -> int:
         """Count total libraries."""
+        if filters:
+            libraries = await self.list(filters=filters, limit=10000)
+            return len(libraries)
         return len(self._libraries)
     
     async def get_state(self) -> Dict[str, Any]:
