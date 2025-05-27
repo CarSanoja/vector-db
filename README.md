@@ -35,6 +35,7 @@ A REST API for indexing and querying documents within a Vector Database, special
     * Dedicated API client examples (`examples/api/`) showcasing interactions with all major API endpoints.
     * Runner scripts (`run_all_examples.sh`, `run_api_tests.sh`) for easy execution of examples.
 
+
 ## 🛠️ Tech Stack
 
 * **Backend:** Python (3.11+)

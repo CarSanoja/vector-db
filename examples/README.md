@@ -36,7 +36,7 @@ This script runs basic, advanced, persistence, benchmark examples, and checks ut
 ```bash
 # From the project root:
 ./examples/run_all_examples.sh
-
+```
     Benchmarks may take a while. The timeout for benchmarks can be adjusted within the script.
     API examples run by this script might be limited; use run_api_tests.sh for full API example coverage.
 

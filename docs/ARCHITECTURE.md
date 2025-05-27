@@ -31,6 +31,8 @@ The system employs a layered architecture pattern that separates concerns across
 └─────────────────────────────────────────────────────────────┘
 ```
 
+![architeture](images/architeture.png)
+
 ### Core Components
 
 The system consists of four main components that interact to provide the complete functionality:
@@ -170,7 +172,7 @@ The implementation adapts traditional KD-Trees for high-dimensional vectors usin
 
 ### Thread Safety Strategy
 
-The system implements a sophisticated concurrency model to handle simultaneous read and write operations without data races.
+The system implements a  concurrency model to handle simultaneous read and write operations without data races.
 
 #### Read-Write Lock Pattern
 The implementation uses reader-writer locks with the following characteristics:
@@ -178,14 +180,6 @@ The implementation uses reader-writer locks with the following characteristics:
 - Writers obtain exclusive access
 - Lock upgrading prevented to avoid deadlocks
 - Fair scheduling prevents starvation
-
-#### Copy-on-Write Semantics
-Write operations follow copy-on-write principles:
-1. Acquire write lock
-2. Create deep copy of affected data structure
-3. Perform modifications on copy
-4. Atomically swap references
-5. Release lock
 
 This approach minimizes lock hold time and ensures readers always see consistent state.
 
@@ -198,23 +192,7 @@ The system enforces a strict lock ordering to prevent deadlocks:
 
 Locks must be acquired in this order and released in reverse order.
 
-### Asynchronous Operations
-
-Long-running operations execute asynchronously to maintain API responsiveness:
-
-#### Index Building
-- Queued for background processing
-- Progress tracking via job identifiers
-- Non-blocking API responses
-- Eventual consistency model
-
-#### Bulk Operations
-- Batched for efficiency
-- Streaming processing for large datasets
-- Progress notifications available
-- Transactional semantics where applicable
-
-## Service Architecture
+![conceptual_flow](images/conceptual_flow.png)
 
 ### Library Service
 
@@ -232,11 +210,6 @@ The Library Service manages the lifecycle of vector libraries and coordinates wi
 - `delete_library`: Removes library and associated resources
 - `list_libraries`: Retrieves libraries with filtering and pagination
 
-**Design Patterns:**
-- Repository pattern for data access
-- Factory pattern for index creation
-- Strategy pattern for index algorithm selection
-
 ### Chunk Service
 
 The Chunk Service handles chunk management and maintains index consistency.
@@ -245,18 +218,11 @@ The Chunk Service handles chunk management and maintains index consistency.
 - Chunk CRUD operations
 - Embedding validation
 - Index update coordination
-- Batch operation optimization
 
 **Key Operations:**
 - `create_chunk`: Adds new chunk to library and index
 - `update_chunk`: Modifies chunk content and re-indexes
 - `delete_chunk`: Removes chunk and updates index
-- `bulk_create_chunks`: Efficiently processes multiple chunks
-
-**Design Patterns:**
-- Command pattern for index operations
-- Observer pattern for index notifications
-- Bulk operation optimization strategies
 
 ### Search Service
 
@@ -266,17 +232,10 @@ The Search Service executes vector similarity queries and applies post-processin
 - Query execution across indexes
 - Metadata filter application
 - Result ranking and scoring
-- Search result caching
 
 **Key Operations:**
 - `search`: Performs k-NN search in specified library
 - `search_with_filters`: Applies metadata predicates to results
-- `multi_library_search`: Federates search across libraries
-
-**Design Patterns:**
-- Strategy pattern for search algorithms
-- Decorator pattern for result filtering
-- Cache-aside pattern for performance
 
 ## API Design
 
@@ -350,6 +309,8 @@ The system implements comprehensive error handling:
 }
 ```
 
+![api_layer](images/api_layer.png)
+
 ## Persistence Layer
 
 ### Write-Ahead Logging
@@ -359,7 +320,6 @@ The system implements write-ahead logging for durability:
 1. **Log Structure**: Append-only log files with sequential writes
 2. **Operation Recording**: All mutations logged before application
 3. **Checkpointing**: Periodic snapshots reduce recovery time
-4. **Log Compaction**: Background process merges old log segments
 
 ### Snapshot Management
 
@@ -372,211 +332,8 @@ Periodic snapshots capture complete system state:
 
 ### Data Formats
 
-The persistence layer uses efficient binary formats:
+The persistence layer uses binary formats:
 
-#### Vector Storage
-- Packed binary representation for embeddings
-- Compression for sparse vectors
-- Memory-mapped files for large indexes
+![persistance](images/persistance.png)
+![recover_state](images/recover_state.png)
 
-#### Metadata Storage
-- MessagePack for structured data
-- Schema versioning for upgrades
-- Efficient indexing structures
-
-## Performance Optimizations
-
-### Caching Strategy
-
-Multi-level caching improves response times:
-
-#### Query Result Cache
-- LRU eviction policy
-- Content-based cache keys
-- TTL-based expiration
-- Cache warming strategies
-
-#### Index Cache
-- Hot vectors in memory
-- Tiered storage for cold data
-- Adaptive replacement policies
-
-#### Connection Pooling
-- Reusable connections
-- Health checking
-- Automatic retry logic
-
-### Batch Processing
-
-The system optimizes bulk operations:
-
-1. **Batched Inserts**: Amortize index update costs
-2. **Streaming Processing**: Handle large datasets without memory exhaustion
-3. **Parallel Processing**: Utilize multiple CPU cores
-4. **Progress Tracking**: Real-time operation status
-
-### Index Partitioning
-
-Large indexes benefit from partitioning:
-
-1. **Horizontal Partitioning**: Split by hash or range
-2. **Partition Pruning**: Query only relevant partitions
-3. **Parallel Search**: Query partitions concurrently
-4. **Dynamic Rebalancing**: Maintain partition balance
-
-## Scalability Considerations
-
-### Vertical Scaling
-
-The system efficiently utilizes available resources:
-
-1. **CPU Optimization**: Parallel index building and searching
-2. **Memory Management**: Configurable cache sizes
-3. **I/O Optimization**: Asynchronous disk operations
-4. **Resource Limits**: Prevent single query monopolization
-
-### Horizontal Scaling
-
-Future considerations for distributed deployment:
-
-1. **Sharding Strategy**: Content-based or hash-based sharding
-2. **Replication Model**: Leader-follower for read scaling
-3. **Consistency Model**: Eventual consistency with tunable guarantees
-4. **Load Balancing**: Client-side or proxy-based routing
-
-## Security Considerations
-
-### Authentication and Authorization
-
-The system design accommodates security requirements:
-
-1. **API Key Authentication**: Simple token-based access
-2. **JWT Support**: Stateless authentication tokens
-3. **Role-Based Access**: Granular permissions per resource
-4. **Audit Logging**: Complete operation history
-
-### Data Protection
-
-Sensitive data receives appropriate protection:
-
-1. **Encryption at Rest**: Optional encryption for persistence
-2. **Encryption in Transit**: TLS for API communications
-3. **Data Sanitization**: Input validation and output encoding
-4. **Resource Isolation**: Library-level access control
-
-## Monitoring and Observability
-
-### Metrics Collection
-
-The system exposes operational metrics:
-
-1. **Performance Metrics**: Latency, throughput, error rates
-2. **Resource Metrics**: CPU, memory, disk usage
-3. **Business Metrics**: Query volume, index sizes
-4. **Custom Metrics**: Algorithm-specific indicators
-
-### Logging Strategy
-
-Structured logging facilitates debugging:
-
-1. **Log Levels**: Configurable verbosity
-2. **Structured Format**: JSON logs for parsing
-3. **Correlation IDs**: Request tracing
-4. **Log Aggregation**: Centralized log management
-
-### Health Checks
-
-Multiple health check endpoints:
-
-1. **Liveness Probe**: Basic application health
-2. **Readiness Probe**: Ready to serve traffic
-3. **Dependency Checks**: External service availability
-4. **Performance Checks**: Response time validation
-
-## Testing Strategy
-
-### Test Pyramid
-
-The system follows the test pyramid principle:
-
-#### Unit Tests
-- Algorithm correctness verification
-- Service logic validation
-- Edge case coverage
-- Mock external dependencies
-
-#### Integration Tests
-- API endpoint testing
-- Service interaction validation
-- Database operation verification
-- Error scenario testing
-
-#### Performance Tests
-- Index operation benchmarks
-- Concurrent load testing
-- Memory usage profiling
-- Query latency analysis
-
-#### End-to-End Tests
-- Complete workflow validation
-- Multi-service integration
-- Production scenario simulation
-
-### Test Data Management
-
-Realistic test data ensures quality:
-
-1. **Synthetic Data Generation**: Configurable vector distributions
-2. **Fixture Management**: Reusable test scenarios
-3. **Performance Datasets**: Large-scale testing data
-4. **Edge Case Collections**: Boundary condition testing
-
-## Deployment Architecture
-
-### Container Design
-
-The application uses multi-stage Docker builds:
-
-1. **Build Stage**: Compile dependencies and optimize
-2. **Runtime Stage**: Minimal production image
-3. **Security Hardening**: Non-root user, minimal attack surface
-4. **Health Monitoring**: Built-in health check endpoints
-
-### Configuration Management
-
-Flexible configuration supports multiple environments:
-
-1. **Environment Variables**: Runtime configuration
-2. **Configuration Files**: Complex settings
-3. **Secret Management**: Secure credential handling
-4. **Feature Flags**: Gradual rollout support
-
-### Orchestration Support
-
-The system design accommodates orchestration platforms:
-
-1. **Kubernetes Ready**: Proper health checks and graceful shutdown
-2. **Resource Limits**: CPU and memory constraints
-3. **Horizontal Pod Autoscaling**: Metrics-based scaling
-4. **Rolling Updates**: Zero-downtime deployments
-
-## Future Enhancements
-
-### Planned Improvements
-
-The architecture supports future enhancements:
-
-1. **Additional Algorithms**: Annoy, ScaNN integration
-2. **GPU Acceleration**: CUDA support for large-scale operations
-3. **Distributed Mode**: Multi-node deployment
-4. **Advanced Filtering**: Complex metadata queries
-5. **Real-time Indexing**: Streaming vector updates
-
-### Extension Points
-
-The system provides clear extension mechanisms:
-
-1. **Algorithm Plugins**: Interface for custom indexes
-2. **Storage Backends**: Pluggable persistence layer
-3. **Authentication Providers**: External identity integration
-4. **Monitoring Integrations**: Custom metrics exporters
