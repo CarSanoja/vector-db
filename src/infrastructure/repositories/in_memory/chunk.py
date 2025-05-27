@@ -1,4 +1,6 @@
-"""In-memory implementation of ChunkRepository."""
+from __future__ import annotations
+
+import builtins
 from copy import deepcopy
 from typing import Any, Optional
 from uuid import UUID
@@ -41,7 +43,7 @@ class InMemoryChunkRepository(ChunkRepository):
             logger.info("Created chunk", chunk_id=str(stored_chunk.id))
             return deepcopy(stored_chunk)
 
-    async def get(self, id: UUID) -> Optional[Chunk]:
+    async def get(self, id: UUID) -> Chunk | None:
         """Get a chunk by ID."""
         async with self._lock.read():
             chunk = self._storage.get(id)
@@ -49,7 +51,7 @@ class InMemoryChunkRepository(ChunkRepository):
                 return deepcopy(chunk)
             return None
 
-    async def update(self, id: UUID, entity: Chunk) -> Optional[Chunk]:
+    async def update(self, id: UUID, entity: Chunk) -> Chunk | None:
         """Update a chunk."""
         async with self._lock.write():
             if id not in self._storage:
@@ -81,9 +83,9 @@ class InMemoryChunkRepository(ChunkRepository):
             logger.info("Deleted chunk", chunk_id=str(id))
             return True
 
-    async def list(
+    async def list_chunks(
         self,
-        filters: Optional[dict[str, Any]] = None,
+        filters: dict[str, Any] | None = None,
         limit: int = 100,
         offset: int = 0
     ) -> list[Chunk]:
@@ -103,7 +105,20 @@ class InMemoryChunkRepository(ChunkRepository):
             # Return deep copies
             return [deepcopy(chunk) for chunk in result]
 
-    async def count(self, filters: Optional[dict[str, Any]] = None) -> int:
+    async def list(                    # ③ mismo nombre que en ChunkRepository
+        self,
+        filters: dict[str, Any] | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> builtins.list[Chunk]:         #   usa builtins.list en la anotación
+        """Lista chunks con filtros y paginación (wrapper de list_chunks)."""
+        return await self.list_chunks(
+            filters=filters,
+            limit=limit,
+            offset=offset,
+        )
+
+    async def count(self, filters: dict[str, Any] | None = None) -> int:
         """Count chunks with optional filtering."""
         async with self._lock.read():
             chunks = list(self._storage.values())
@@ -161,7 +176,7 @@ class InMemoryChunkRepository(ChunkRepository):
         # This would require a library-document mapping in a real implementation
         # For now, we'll filter by metadata if library_id is stored there
         filters = {"library_id": str(library_id)}
-        return await self.list(filters=filters, limit=limit, offset=offset)
+        return await self.list_chunks(filters=filters, limit=limit, offset=offset)
 
     async def delete_by_document(self, document_id: UUID) -> int:
         """Delete all chunks for a document."""

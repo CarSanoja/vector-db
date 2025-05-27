@@ -2,7 +2,7 @@ from typing import Any, Optional
 from uuid import UUID
 
 import numpy as np
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, FieldValidationInfo, field_validator
 
 
 class SearchQuery(BaseModel):
@@ -26,21 +26,35 @@ class SearchQuery(BaseModel):
 
 
 class SearchResult(BaseModel):
-    """Represents a single search result."""
 
     chunk_id: UUID
     content: str
-    distance: float = Field(..., ge=0)
-    score: float = Field(..., ge=0, le=1)
-    metadata: dict[str, Any] = Field(default_factory=dict)
+    distance: float
+    score: Optional[float] = None
+    metadata: dict[str, Any]
 
-    @field_validator('score')
-    def validate_score(cls, v, values):
-        """Calculate score from distance if not provided."""
-        if 'distance' in values:
-            # Convert distance to similarity score (0-1)
-            return 1 / (1 + values['distance'])
-        return v
+    @field_validator("score", mode="before")
+    def validate_score(
+        cls,
+        v: Optional[float],
+        info: FieldValidationInfo, 
+    ) -> float:
+        if v is not None:
+            return v
+        distance = info.data.get("distance")
+        if distance is None:
+            raise ValueError("distance is required to compute score")
+
+        return 1.0 / (1.0 + distance)
+
+    @field_validator("score", mode="before")
+    def calc_score(cls, v, info: FieldValidationInfo) -> float:
+        if v is not None:
+            return v
+        distance = info.data.get("distance")
+        if distance is None:
+            raise ValueError("distance is required to compute score")
+        return 1.0 / (1.0 + distance)
 
     class Config:
         """Pydantic model configuration."""

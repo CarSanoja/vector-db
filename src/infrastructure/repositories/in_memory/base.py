@@ -74,7 +74,7 @@ class InMemoryBaseRepository(BaseRepository[T], Generic[T]):
                 return True
             return False
 
-    async def list(
+    async def list_all(
         self,
         filters: Optional[dict[str, Any]] = None,
         limit: int = 100,

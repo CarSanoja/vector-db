@@ -9,7 +9,6 @@ import shutil
 from pathlib import Path
 from uuid import uuid4
 
-# Set default persistence directory for examples
 os.environ['VECTOR_DB_DATA_DIR'] = str(Path.cwd() / 'examples' / 'data')
 
 from datetime import UTC, datetime
@@ -67,7 +66,11 @@ async def main():
             updated_at=datetime.now(UTC),
             metadata={"persistent": True, "index": i}
         )
-        await library_repo.create(library)
+        lib, created = await library_repo.get_or_create(library)
+        if created:
+            print("Created", lib.id)
+        else:
+            print("Already exist:", lib.id)
         libraries_created.append(library)
         print(f"Created: {library.name}")
 
@@ -112,7 +115,7 @@ async def main():
         updated_at=datetime.now(UTC),
         metadata={"created_after_recovery": True}
     )
-    await library_repo2.create(new_library)
+    await library_repo2.get_or_create(new_library)
     print(f"Created: {new_library.name}")
 
     final_count = await library_repo2.count()

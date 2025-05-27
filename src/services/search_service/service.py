@@ -63,10 +63,9 @@ class SearchService(ISearchService):
 
         # Check cache
         cache_key = self._get_cache_key(query)
-        async with self._cache_lock.read():
-            if cache_key in self._search_cache:
-                logger.debug("Returning cached search results")
-                return self._search_cache[cache_key]
+        if cache_key in self._search_cache:
+            logger.debug("Returning cached search results")
+            return self._search_cache[cache_key]
 
         # Perform vector search
         query_vector = np.array(embedding, dtype=np.float32)
@@ -101,9 +100,7 @@ class SearchService(ISearchService):
                 )
                 results.append(result)
 
-        # Cache results
-        async with self._cache_lock.write():
-            self._search_cache[cache_key] = results
+        self._search_cache[cache_key] = results
 
         logger.info(
             "Search completed",
@@ -195,6 +192,5 @@ class SearchService(ISearchService):
 
     async def clear_cache(self) -> None:
         """Clear the search cache."""
-        async with self._cache_lock.write():
-            self._search_cache.clear()
-            logger.info("Cleared search cache")
+        self._search_cache.clear()
+        logger.info("Cleared search cache")

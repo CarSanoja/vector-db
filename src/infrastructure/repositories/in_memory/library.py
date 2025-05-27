@@ -1,6 +1,9 @@
+from __future__ import annotations
+
+import builtins
 from copy import deepcopy
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Any
 from uuid import UUID
 
 from src.domain.entities.library import Library
@@ -15,7 +18,26 @@ class InMemoryLibraryRepository(InMemoryBaseRepository[Library], LibraryReposito
     def __init__(self):
         super().__init__(Library)
 
-    async def get_by_name(self, name: str) -> Optional[Library]:
+    async def list(
+        self,
+        filters: dict[str, Any] | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> builtins.list[Library]:
+        """
+        Devuelve una lista paginada de bibliotecas, aplicando filtros
+        opcionales sobre sus atributos.
+        """
+        async with self._lock.read():
+            libs = builtins.list(self._storage.values())
+
+            if filters:
+                libs = self._apply_filters(libs, filters)
+
+            start, end = offset, offset + limit
+            return [deepcopy(library) for library in libs[start:end]]
+
+    async def get_by_name(self, name: str) -> Library | None:
         """Get a library by name."""
         async with self._lock.read():
             for library in self._storage.values():
@@ -36,9 +58,9 @@ class InMemoryLibraryRepository(InMemoryBaseRepository[Library], LibraryReposito
     async def update_stats(
         self,
         id: UUID,
-        total_documents: Optional[int] = None,
-        total_chunks: Optional[int] = None
-    ) -> Optional[Library]:
+        total_documents: int | None = None,
+        total_chunks: int | None = None
+    ) -> Library | None:
         """Update library statistics."""
         async with self._lock.write():
             library = self._storage.get(id)

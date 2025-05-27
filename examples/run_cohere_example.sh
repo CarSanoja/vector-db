@@ -25,6 +25,9 @@ echo -e "\n${YELLOW}Changed directory to project root: $(pwd)${NC}"
 
 echo -e "\n${YELLOW}Setting up Python environment...${NC}"
 
+source .venv/bin/activate
+export PYTHONPATH="${PYTHONPATH}:${PROJECT_ROOT}"
+echo -e "${GREEN}✓ Python environment ready.${NC}"
 
 if ! command -v poetry &> /dev/null; then
     echo -e "${RED}Error: 'poetry' command not found.${NC}"

@@ -1,5 +1,7 @@
-"""Persistent implementation of library repository."""
+from __future__ import annotations
+
 import asyncio
+import builtins
 from typing import Any, Optional
 from uuid import UUID
 
@@ -49,16 +51,25 @@ class PersistentLibraryRepository(LibraryRepository):  # Changed from ILibraryRe
             logger.info(f"Created library {library.id}")
             return library
 
-    async def get(self, id: UUID) -> Optional[Library]:
+    async def get_or_create(self, library: Library) -> tuple[Library, bool]:
+        async with self._lock:
+            existing = await self.get_by_name(library.name)
+            if existing:
+                return existing, False
+
+            created = await self.create(library)
+            return created, True
+
+    async def get(self, id: UUID) -> Library | None:
         """Get library by ID."""
         return self._libraries.get(id)
 
-    async def get_by_name(self, name: str) -> Optional[Library]:
+    async def get_by_name(self, name: str) -> Library | None:
         """Get library by name."""
         library_id = self._name_index.get(name)
         return self._libraries.get(library_id) if library_id else None
 
-    async def update(self, id: UUID, entity: Library) -> Optional[Library]:
+    async def update(self, id: UUID, entity: Library) -> Library | None:
         """Update an existing library."""
         async with self._lock:
             if id not in self._libraries:
@@ -111,7 +122,16 @@ class PersistentLibraryRepository(LibraryRepository):  # Changed from ILibraryRe
 
     async def list(
         self,
-        filters: Optional[dict[str, Any]] = None,
+        filters: dict[str, Any] | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> builtins.list[Library]:
+        """Alias de list_all para cumplir la ABC."""
+        return await self.list_all(filters=filters, limit=limit, offset=offset)
+
+    async def list_all(
+        self,
+        filters: dict[str, Any] | None = None,
         limit: int = 100,
         offset: int = 0
     ) -> list[Library]:
@@ -137,14 +157,14 @@ class PersistentLibraryRepository(LibraryRepository):  # Changed from ILibraryRe
 
     async def list_by_index_type(self, index_type: str) -> list[Library]:
         """list libraries by index type."""
-        return await self.list(filters={'index_type': index_type})
+        return await self.list_all(filters={'index_type': index_type})
 
     async def update_stats(
         self,
         id: UUID,
-        total_documents: Optional[int] = None,
-        total_chunks: Optional[int] = None
-    ) -> Optional[Library]:
+        total_documents: int | None = None,
+        total_chunks: int | None = None
+    ) -> Library | None:
         """Update library statistics."""
         library = self._libraries.get(id)
         if not library:
@@ -159,10 +179,10 @@ class PersistentLibraryRepository(LibraryRepository):  # Changed from ILibraryRe
         # Use regular update to persist
         return await self.update(id, library)
 
-    async def count(self, filters: Optional[dict[str, Any]] = None) -> int:
+    async def count(self, filters: dict[str, Any] | None = None) -> int:
         """Count total libraries."""
         if filters:
-            libraries = await self.list(filters=filters, limit=10000)
+            libraries = await self.list_all(filters=filters, limit=10000)
             return len(libraries)
         return len(self._libraries)
 
