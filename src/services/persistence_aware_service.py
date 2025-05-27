@@ -9,6 +9,7 @@ from src.infrastructure.persistence.wal.interface import OperationType
 from src.infrastructure.repositories.persistent_library_repository import (
     PersistentLibraryRepository,
 )
+
 logger = get_logger(__name__)
 
 
