@@ -1,6 +1,6 @@
 """Library API models."""
-from typing import Dict, Any, List, Optional
 from datetime import datetime
+from typing import Any, Optional, dict, list
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -14,14 +14,14 @@ class LibraryCreate(BaseModel):
     description: Optional[str] = Field(None, max_length=1000)
     dimension: int = Field(..., gt=0, le=4096)
     index_type: IndexType = Field(default=IndexType.HNSW)
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class LibraryUpdate(BaseModel):
     """Request model for updating a library."""
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = Field(None, max_length=1000)
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: Optional[dict[str, Any]] = None
 
 
 class LibraryResponse(BaseModel):
@@ -33,13 +33,13 @@ class LibraryResponse(BaseModel):
     index_type: IndexType
     total_documents: int = 0
     total_chunks: int = 0
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
     created_at: datetime
     updated_at: datetime
-    
+
     class Config:
         from_attributes = True
-    
+
     @classmethod
     def from_orm(cls, obj):
         """Create from ORM object."""
@@ -59,7 +59,7 @@ class LibraryResponse(BaseModel):
 
 class LibraryListResponse(BaseModel):
     """Response model for library list."""
-    libraries: List[LibraryResponse]
+    libraries: list[LibraryResponse]
     total: int
     limit: int
     offset: int

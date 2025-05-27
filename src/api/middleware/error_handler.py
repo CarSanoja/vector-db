@@ -1,13 +1,13 @@
 from fastapi import Request, status
-from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from src.core.exceptions import (
-    VectorDatabaseError,
-    ValidationError,
+    ConflictError,
     NotFoundError,
-    ConflictError
+    ValidationError,
+    VectorDatabaseError,
 )
 from src.core.logging import get_logger
 
@@ -25,7 +25,7 @@ async def vector_database_exception_handler(
         details=exc.details,
         path=request.url.path
     )
-    
+
     # Map exceptions to HTTP status codes
     status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
     if isinstance(exc, ValidationError):
@@ -34,7 +34,7 @@ async def vector_database_exception_handler(
         status_code = status.HTTP_404_NOT_FOUND
     elif isinstance(exc, ConflictError):
         status_code = status.HTTP_409_CONFLICT
-    
+
     return JSONResponse(
         status_code=status_code,
         content={
@@ -57,7 +57,7 @@ async def validation_exception_handler(
         errors=exc.errors(),
         path=request.url.path
     )
-    
+
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={
@@ -80,7 +80,7 @@ async def http_exception_handler(
         status_code=exc.status_code,
         path=request.url.path
     )
-    
+
     # If detail is already a dict with error structure, use it
     if isinstance(exc.detail, dict) and "error" in exc.detail:
         content = exc.detail
@@ -92,7 +92,7 @@ async def http_exception_handler(
                 "details": {"status_code": exc.status_code}
             }
         }
-    
+
     return JSONResponse(
         status_code=exc.status_code,
         content=content
@@ -109,7 +109,7 @@ async def generic_exception_handler(
         exc_type=type(exc).__name__,
         path=request.url.path
     )
-    
+
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={

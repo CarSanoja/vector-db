@@ -1,16 +1,16 @@
-from typing import List, Optional
+from typing import list
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, status, Path
+from fastapi import APIRouter, HTTPException, status
 
+from src.api.dependencies import ChunkServiceDep, PaginationDep
 from src.api.models.chunk import (
-    ChunkCreate,
-    ChunkUpdate,
-    ChunkResponse,
     ChunkBulkCreate,
-    ChunkListResponse
+    ChunkCreate,
+    ChunkListResponse,
+    ChunkResponse,
+    ChunkUpdate,
 )
-from src.api.dependencies import ChunkServiceDep, LibraryServiceDep, PaginationDep
 from src.core.exceptions import NotFoundError, ValidationError
 
 router = APIRouter(tags=["chunks"])
@@ -52,7 +52,7 @@ async def create_chunk(
 
 @router.post(
     "/libraries/{library_id}/chunks/bulk",
-    response_model=List[ChunkResponse],
+    response_model=list[ChunkResponse],
     status_code=status.HTTP_201_CREATED,
     summary="Bulk create chunks",
     description="Create multiple chunks in a single operation"
@@ -61,7 +61,7 @@ async def create_chunks_bulk(
     library_id: UUID,
     request: ChunkBulkCreate,
     chunk_service: ChunkServiceDep
-) -> List[ChunkResponse]:
+) -> list[ChunkResponse]:
     """Create multiple chunks."""
     try:
         chunks_data = [chunk.dict() for chunk in request.chunks]
@@ -85,26 +85,26 @@ async def create_chunks_bulk(
 @router.get(
     "/libraries/{library_id}/chunks",
     response_model=ChunkListResponse,
-    summary="List chunks in library",
-    description="List all chunks in a library with pagination"
+    summary="list chunks in library",
+    description="list all chunks in a library with pagination"
 )
 async def list_chunks(
     library_id: UUID,
     chunk_service: ChunkServiceDep,
     pagination: PaginationDep
 ) -> ChunkListResponse:
-    """List chunks in a library."""
+    """list chunks in a library."""
     try:
         chunks = await chunk_service.list_chunks(
             library_id=library_id,
             limit=pagination.limit,
             offset=pagination.offset
         )
-        
+
         # Get total count
         all_chunks = await chunk_service.list_chunks(library_id=library_id, limit=10000)
         total = len(all_chunks)
-        
+
         return ChunkListResponse(
             chunks=[ChunkResponse.from_orm(chunk) for chunk in chunks],
             total=total,

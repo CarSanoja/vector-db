@@ -1,10 +1,10 @@
 """Services module."""
-from .service_interfaces import ILibraryService, IChunkService, ISearchService
 from .service_factory import ServiceFactory
+from .service_interfaces import IChunkService, ILibraryService, ISearchService
 
 __all__ = [
     "ILibraryService",
-    "IChunkService", 
+    "IChunkService",
     "ISearchService",
     "ServiceFactory"
 ]

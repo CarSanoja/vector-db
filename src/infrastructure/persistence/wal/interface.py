@@ -1,10 +1,10 @@
 """Write-Ahead Log interface."""
+import uuid
 from abc import ABC, abstractmethod
-from typing import Any, Optional, List, BinaryIO
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-import uuid
+from typing import list
 
 
 class OperationType(Enum):
@@ -34,7 +34,7 @@ class WALEntry:
 
 class IWriteAheadLog(ABC):
     """Interface for Write-Ahead Log."""
-    
+
     @abstractmethod
     async def append(
         self,
@@ -44,27 +44,27 @@ class IWriteAheadLog(ABC):
     ) -> int:
         """Append an entry to the WAL."""
         pass
-    
+
     @abstractmethod
-    async def read(self, from_sequence: int = 0) -> List[WALEntry]:
+    async def read(self, from_sequence: int = 0) -> list[WALEntry]:
         """Read entries from the WAL starting from a sequence number."""
         pass
-    
+
     @abstractmethod
     async def checkpoint(self) -> int:
         """Create a checkpoint and return the sequence number."""
         pass
-    
+
     @abstractmethod
     async def truncate(self, up_to_sequence: int) -> None:
         """Remove entries up to a sequence number."""
         pass
-    
+
     @abstractmethod
     async def replay(self, from_sequence: int = 0) -> int:
         """Replay entries from a sequence number."""
         pass
-    
+
     @abstractmethod
     async def close(self) -> None:
         """Close the WAL and release resources."""

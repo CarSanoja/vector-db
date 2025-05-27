@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-import httpx
 import asyncio
-import uuid
 import json
-from typing import Dict, Any, List
+import uuid
+from typing import Any, dict, list
+
+import httpx
 
 BASE_URL = "http://localhost:8000"
 API_PREFIX = "/api/v1"
-DIMENSION = 4 
+DIMENSION = 4
 
 
 def print_section(title: str):
@@ -20,10 +21,10 @@ def print_response(response: httpx.Response, data: Any = None):
     except json.JSONDecodeError:
         print(f"Response Body: {response.text}")
 
-def print_json(data: Dict[str, Any]):
+def print_json(data: dict[str, Any]):
     print(json.dumps(data, indent=2, ensure_ascii=False))
 
-async def setup_search_test_data(client: httpx.AsyncClient) -> tuple[str, List[str]]:
+async def setup_search_test_data(client: httpx.AsyncClient) -> tuple[str, list[str]]:
     lib_name = f"Search-Test-Lib-{uuid.uuid4().hex[:8]}"
     lib_data = {"name": lib_name, "dimension": DIMENSION, "index_type": "HNSW"}
     response = await client.post(f"{API_PREFIX}/libraries/", json=lib_data)
@@ -42,9 +43,9 @@ async def setup_search_test_data(client: httpx.AsyncClient) -> tuple[str, List[s
         resp_chunk = await client.post(f"{API_PREFIX}/libraries/{library_id}/chunks", json=chunk)
         resp_chunk.raise_for_status()
         created_chunk_ids.append(resp_chunk.json()["id"])
-    
+
     print(f"Added {len(created_chunk_ids)} chunks to library {library_id}")
-    
+
     await client.post(f"{API_PREFIX}/libraries/{library_id}/index")
     print(f"Index rebuild initiated for library {library_id}")
     await asyncio.sleep(1)
@@ -52,7 +53,7 @@ async def setup_search_test_data(client: httpx.AsyncClient) -> tuple[str, List[s
 
     return library_id, created_chunk_ids
 
-async def cleanup_search_test_data(client: httpx.AsyncClient, library_id: str, chunk_ids: List[str]):
+async def cleanup_search_test_data(client: httpx.AsyncClient, library_id: str, chunk_ids: list[str]):
     await client.delete(f"{API_PREFIX}/libraries/{library_id}")
     print(f"Search test library {library_id} and its chunks deleted.")
 
@@ -61,8 +62,8 @@ async def main():
     async with httpx.AsyncClient(base_url=BASE_URL, timeout=30.0) as client:
         library_id_1 = None
         library_id_2 = None
-        chunk_ids_1: List[str] = []
-        chunk_ids_2: List[str] = []
+        chunk_ids_1: list[str] = []
+        chunk_ids_2: list[str] = []
 
         try:
             print_section("0. Setup Data for Search Tests")
@@ -102,7 +103,7 @@ async def main():
             resp_lib2 = await client.post(f"{API_PREFIX}/libraries/", json=lib2_data)
             resp_lib2.raise_for_status()
             library_id_2 = resp_lib2.json()["id"]
-            
+
             chunk_lib2_data = {"content": "Green apples are tasty", "embedding": [0.7, 0.8, 0.5, 0.6], "metadata": {"fruit": "apple"}}
             resp_chunk_lib2 = await client.post(f"{API_PREFIX}/libraries/{library_id_2}/chunks", json=chunk_lib2_data)
             resp_chunk_lib2.raise_for_status()

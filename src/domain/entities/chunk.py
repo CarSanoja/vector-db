@@ -1,7 +1,7 @@
 """Chunk entity."""
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, Any, List, Optional
+from typing import Any, Optional, dict, list
 from uuid import UUID
 
 
@@ -11,13 +11,13 @@ class Chunk:
     id: UUID
     library_id: UUID  # Este campo es necesario
     content: str
-    embedding: List[float]
+    embedding: list[float]
     document_id: Optional[UUID] = None
     chunk_index: int = 0
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: datetime = field(default_factory=datetime.utcnow)
-    
+
     def __post_init__(self):
         """Validate chunk after initialization."""
         if not self.content:

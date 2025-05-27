@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict, Any
+from typing import list, Optional, Dict, Any
 from uuid import UUID
 from datetime import datetime
 from copy import deepcopy
@@ -18,7 +18,7 @@ class InMemoryChunkRepository(ChunkRepository):
         self._storage: Dict[UUID, Chunk] = {}
         self._lock = ReadWriteLock()
         # Additional index for document lookups
-        self._document_index: Dict[UUID, List[UUID]] = {}
+        self._document_index: Dict[UUID, list[UUID]] = {}
         logger.info("Initialized in-memory chunk repository")
     
     async def create(self, entity: Chunk) -> Chunk:
@@ -86,8 +86,8 @@ class InMemoryChunkRepository(ChunkRepository):
         filters: Optional[Dict[str, Any]] = None,
         limit: int = 100,
         offset: int = 0
-    ) -> List[Chunk]:
-        """List chunks with optional filtering."""
+    ) -> list[Chunk]:
+        """list chunks with optional filtering."""
         async with self._lock.read():
             chunks = list(self._storage.values())
             
@@ -113,7 +113,7 @@ class InMemoryChunkRepository(ChunkRepository):
             
             return len(chunks)
     
-    async def create_bulk(self, chunks: List[Chunk]) -> List[Chunk]:
+    async def create_bulk(self, chunks: list[Chunk]) -> list[Chunk]:
         """Create multiple chunks efficiently."""
         async with self._lock.write():
             created_chunks = []
@@ -136,7 +136,7 @@ class InMemoryChunkRepository(ChunkRepository):
             logger.info(f"Created {len(created_chunks)} chunks in bulk")
             return created_chunks
     
-    async def get_by_document(self, document_id: UUID) -> List[Chunk]:
+    async def get_by_document(self, document_id: UUID) -> list[Chunk]:
         """Get all chunks for a document."""
         async with self._lock.read():
             chunk_ids = self._document_index.get(document_id, [])
@@ -156,7 +156,7 @@ class InMemoryChunkRepository(ChunkRepository):
         library_id: UUID,
         limit: int = 100,
         offset: int = 0
-    ) -> List[Chunk]:
+    ) -> list[Chunk]:
         """Get chunks by library ID through document relationship."""
         # This would require a library-document mapping in a real implementation
         # For now, we'll filter by metadata if library_id is stored there
@@ -189,7 +189,7 @@ class InMemoryChunkRepository(ChunkRepository):
         library_id: UUID,
         metadata_filters: Dict[str, Any],
         limit: int = 100
-    ) -> List[Chunk]:
+    ) -> list[Chunk]:
         """Search chunks by metadata filters."""
         async with self._lock.read():
             matching_chunks = []
@@ -208,7 +208,7 @@ class InMemoryChunkRepository(ChunkRepository):
             
             return matching_chunks
     
-    def _apply_filters(self, entities: List[Chunk], filters: Dict[str, Any]) -> List[Chunk]:
+    def _apply_filters(self, entities: list[Chunk], filters: Dict[str, Any]) -> list[Chunk]:
         """Apply filters to entity list."""
         filtered = []
         for entity in entities:

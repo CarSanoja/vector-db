@@ -1,6 +1,6 @@
 """Chunk API models."""
-from typing import Dict, Any, List, Optional
 from datetime import datetime
+from typing import Any, Optional, dict, list
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -9,17 +9,17 @@ from pydantic import BaseModel, Field
 class ChunkCreate(BaseModel):
     """Request model for creating a chunk."""
     content: str = Field(..., min_length=1, max_length=10000)
-    embedding: List[float] = Field(..., min_items=1)
+    embedding: list[float] = Field(..., min_items=1)
     document_id: Optional[UUID] = None
     chunk_index: int = Field(default=0, ge=0)
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class ChunkUpdate(BaseModel):
     """Request model for updating a chunk."""
     content: Optional[str] = Field(None, min_length=1, max_length=10000)
-    embedding: Optional[List[float]] = Field(None, min_items=1)
-    metadata: Optional[Dict[str, Any]] = None
+    embedding: Optional[list[float]] = Field(None, min_items=1)
+    metadata: Optional[dict[str, Any]] = None
 
 
 class ChunkResponse(BaseModel):
@@ -28,13 +28,13 @@ class ChunkResponse(BaseModel):
     content: str
     document_id: Optional[UUID]
     chunk_index: int
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
     created_at: datetime
     updated_at: datetime
-    
+
     class Config:
         from_attributes = True
-    
+
     @classmethod
     def from_orm(cls, obj):
         """Create from ORM object."""
@@ -51,12 +51,12 @@ class ChunkResponse(BaseModel):
 
 class ChunkBulkCreate(BaseModel):
     """Request model for bulk chunk creation."""
-    chunks: List[ChunkCreate]
+    chunks: list[ChunkCreate]
 
 
 class ChunkListResponse(BaseModel):
     """Response model for chunk list."""
-    chunks: List[ChunkResponse]
+    chunks: list[ChunkResponse]
     total: int
     limit: int
     offset: int

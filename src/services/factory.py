@@ -1,24 +1,24 @@
 """Factory for creating service instances with dependency injection."""
 from typing import Optional
 
-from src.domain.repositories.library import LibraryRepository
 from src.domain.repositories.chunk import ChunkRepository
-from src.services.library_service import LibraryService, ILibraryService
-from src.services.chunk_service import ChunkService, IChunkService
-from src.services.search_service import SearchService, ISearchService
+from src.domain.repositories.library import LibraryRepository
 from src.infrastructure.repositories.in_memory import (
+    InMemoryChunkRepository,
     InMemoryLibraryRepository,
-    InMemoryChunkRepository
 )
+from src.services.chunk_service import ChunkService, IChunkService
+from src.services.library_service import ILibraryService, LibraryService
+from src.services.search_service import ISearchService, SearchService
 
 
 class ServiceFactory:
     """Factory for creating service instances."""
-    
+
     _library_service: Optional[ILibraryService] = None
     _chunk_service: Optional[IChunkService] = None
     _search_service: Optional[ISearchService] = None
-    
+
     @classmethod
     def get_library_service(
         cls,
@@ -29,7 +29,7 @@ class ServiceFactory:
             repo = repository or InMemoryLibraryRepository()
             cls._library_service = LibraryService(repo)
         return cls._library_service
-    
+
     @classmethod
     def get_chunk_service(
         cls,
@@ -42,7 +42,7 @@ class ServiceFactory:
             lib_service = library_service or cls.get_library_service()
             cls._chunk_service = ChunkService(repo, lib_service)
         return cls._chunk_service
-    
+
     @classmethod
     def get_search_service(
         cls,
@@ -55,7 +55,7 @@ class ServiceFactory:
             lib_service = library_service or cls.get_library_service()
             cls._search_service = SearchService(chunk_repo, lib_service)
         return cls._search_service
-    
+
     @classmethod
     def reset(cls) -> None:
         """Reset all service instances (useful for testing)."""

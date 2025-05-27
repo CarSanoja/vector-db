@@ -1,15 +1,17 @@
-from typing import List, Optional, Dict, Any
-from uuid import UUID, uuid4 
 from datetime import datetime
+from typing import Any, Optional, dict, list
+from uuid import UUID, uuid4
+
 import numpy as np
 
-from src.domain.entities.chunk import Chunk
-from src.domain.repositories.chunk import ChunkRepository
-from src.services.library_service import ILibraryService 
 from src.core.exceptions import NotFoundError, ValidationError
 from src.core.logging import get_logger
-from .interface import IChunkService 
-from src.infrastructure.locks import lock_manager, LockLevel 
+from src.domain.entities.chunk import Chunk
+from src.domain.repositories.chunk import ChunkRepository
+from src.infrastructure.locks import LockLevel, lock_manager
+from src.services.library_service import ILibraryService
+
+from .interface import IChunkService
 
 logger = get_logger(__name__)
 
@@ -30,14 +32,14 @@ class ChunkService(IChunkService):
         self,
         library_id: UUID,
         content: str,
-        embedding: List[float],
+        embedding: list[float],
         document_id: Optional[UUID] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[dict[str, Any]] = None
     ) -> Chunk:
         """Create a new chunk and add to index."""
         locks_to_acquire = [
-            (LockLevel.LIBRARY, library_id, "read"), 
-            (LockLevel.INDEX, library_id, "write") 
+            (LockLevel.LIBRARY, library_id, "read"),
+            (LockLevel.INDEX, library_id, "write")
         ]
         async with lock_manager.acquire_hierarchical(locks_to_acquire):
             library = await self.library_service.get_library(library_id)
@@ -52,17 +54,17 @@ class ChunkService(IChunkService):
 
             # Create chunk
             chunk = Chunk(
-                id=uuid4(),            
-                library_id=library_id, 
+                id=uuid4(),
+                library_id=library_id,
                 content=content,
                 embedding=embedding,
                 document_id=document_id,
                 metadata=metadata or {}
             )
 
-            created_chunk = await self.repository.create(chunk) 
+            created_chunk = await self.repository.create(chunk)
 
-            index = self.library_service.get_index(library_id) 
+            index = self.library_service.get_index(library_id)
             if index:
                 await index.add(created_chunk.id, np.array(embedding, dtype=np.float32))
 
@@ -82,8 +84,8 @@ class ChunkService(IChunkService):
     async def create_chunks_bulk(
         self,
         library_id: UUID,
-        chunks_data: List[Dict[str, Any]]
-    ) -> List[Chunk]:
+        chunks_data: list[dict[str, Any]]
+    ) -> list[Chunk]:
         """Create multiple chunks efficiently."""
         # Validate library
         library = await self.library_service.get_library(library_id)
@@ -102,7 +104,7 @@ class ChunkService(IChunkService):
                 )
 
             chunk = Chunk(
-                id=uuid4(),            
+                id=uuid4(),
                 library_id=library_id,
                 content=data["content"],
                 embedding=embedding,
@@ -140,8 +142,8 @@ class ChunkService(IChunkService):
         self,
         chunk_id: UUID,
         content: Optional[str] = None,
-        embedding: Optional[List[float]] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        embedding: Optional[list[float]] = None,
+        metadata: Optional[dict[str, Any]] = None
     ) -> Optional[Chunk]:
         """Update a chunk and its index entry."""
         chunk = await self.repository.get(chunk_id)
@@ -150,7 +152,7 @@ class ChunkService(IChunkService):
         locks_to_acquire = [
             (LockLevel.LIBRARY, chunk.library_id, "read"),
             (LockLevel.INDEX, chunk.library_id, "write"),
-            (LockLevel.CHUNK, chunk_id, "write") 
+            (LockLevel.CHUNK, chunk_id, "write")
         ]
         async with lock_manager.acquire_hierarchical(locks_to_acquire):
             library = await self.library_service.get_library(chunk.library_id)
@@ -176,7 +178,7 @@ class ChunkService(IChunkService):
             if metadata is not None:
                 chunk.metadata.update(metadata)
 
-            chunk.updated_at = datetime.utcnow() 
+            chunk.updated_at = datetime.utcnow()
 
             updated_chunk = await self.repository.update(chunk_id, chunk)
 
@@ -192,13 +194,13 @@ class ChunkService(IChunkService):
         locks_to_acquire = [
             (LockLevel.LIBRARY, chunk.library_id, "write"),
             (LockLevel.INDEX, chunk.library_id, "write"),
-            (LockLevel.CHUNK, chunk_id, "write") 
+            (LockLevel.CHUNK, chunk_id, "write")
         ]
         async with lock_manager.acquire_hierarchical(locks_to_acquire):
             library = await self.library_service.get_library(chunk.library_id)
 
             if library:
-                index = self.library_service.get_index(library.id) 
+                index = self.library_service.get_index(library.id)
                 if index:
                     await index.remove(chunk_id)
 
@@ -214,7 +216,7 @@ class ChunkService(IChunkService):
 
         return deleted
 
-    async def get_chunks_by_document(self, document_id: UUID) -> List[Chunk]:
+    async def get_chunks_by_document(self, document_id: UUID) -> list[Chunk]:
         """Get all chunks for a document."""
         return await self.repository.get_by_document(document_id)
 
@@ -233,7 +235,7 @@ class ChunkService(IChunkService):
             if index:
                 chunk_ids_to_remove = [c.id for c in chunks_to_delete]
                 for cid in chunk_ids_to_remove:
-                    await index.remove(cid) 
+                    await index.remove(cid)
 
         deleted_count = await self.repository.delete_by_document(document_id)
 
@@ -255,8 +257,8 @@ class ChunkService(IChunkService):
         library_id: UUID,
         limit: int = 100,
         offset: int = 0
-    ) -> List[Chunk]:
-        """List chunks in a library."""
+    ) -> list[Chunk]:
+        """list chunks in a library."""
         # Validate library exists
         library = await self.library_service.get_library(library_id)
         if not library:

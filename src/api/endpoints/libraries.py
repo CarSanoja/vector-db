@@ -1,16 +1,16 @@
-from typing import List, Optional
+from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, status, Query
+from fastapi import APIRouter, HTTPException, Query, status
 
+from src.api.dependencies import LibraryServiceDep, PaginationDep
 from src.api.models.library import (
     LibraryCreate,
-    LibraryUpdate,
+    LibraryListResponse,
     LibraryResponse,
-    LibraryListResponse
+    LibraryUpdate,
 )
-from src.api.dependencies import LibraryServiceDep, PaginationDep
-from src.core.exceptions import NotFoundError, ConflictError
+from src.core.exceptions import ConflictError, NotFoundError
 from src.domain.entities.library import IndexType
 
 router = APIRouter(prefix="/libraries", tags=["libraries"])
@@ -41,36 +41,36 @@ async def create_library(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail={"error": {"code": e.error_code, "message": str(e), "details": e.details}}
-        )
+        ) from e
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"error": {"code": "INTERNAL_ERROR", "message": str(e)}}
-        )
+        ) from e
 
 
 @router.get(
     "/",
     response_model=LibraryListResponse,
-    summary="List libraries",
-    description="List all libraries with optional filtering"
+    summary="list libraries",
+    description="list all libraries with optional filtering"
 )
 async def list_libraries(
     service: LibraryServiceDep,
     pagination: PaginationDep,
     index_type: Optional[IndexType] = Query(None, description="Filter by index type")
 ) -> LibraryListResponse:
-    """List libraries."""
+    """list libraries."""
     libraries = await service.list_libraries(
         index_type=index_type,
         limit=pagination.limit,
         offset=pagination.offset
     )
-    
+
     # Get total count
     all_libraries = await service.list_libraries(index_type=index_type)
     total = len(all_libraries)
-    
+
     return LibraryListResponse(
         libraries=[LibraryResponse.from_orm(lib) for lib in libraries],
         total=total,
@@ -131,12 +131,12 @@ async def update_library(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"error": {"code": e.error_code, "message": str(e), "details": e.details}}
-        )
+        ) from e
     except ConflictError as e:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail={"error": {"code": e.error_code, "message": str(e), "details": e.details}}
-        )
+        ) from e
 
 
 @router.delete(
@@ -187,7 +187,7 @@ async def rebuild_index(
                 }
             }
         )
-    
+
     # In a real implementation, this would trigger an async job
     return {
         "message": "Index rebuild initiated",

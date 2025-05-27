@@ -287,7 +287,7 @@ The API follows REST principles with resource-oriented URLs and standard HTTP me
 #### Library Resources
 ```
 POST   /api/v1/libraries                  # Create new library
-GET    /api/v1/libraries                  # List all libraries
+GET    /api/v1/libraries                  # list all libraries
 GET    /api/v1/libraries/{id}             # Get library details
 PUT    /api/v1/libraries/{id}             # Update library
 DELETE /api/v1/libraries/{id}             # Delete library
@@ -297,7 +297,7 @@ POST   /api/v1/libraries/{id}/index       # Rebuild index
 #### Chunk Resources
 ```
 POST   /api/v1/libraries/{lib_id}/chunks  # Create chunk
-GET    /api/v1/libraries/{lib_id}/chunks  # List chunks
+GET    /api/v1/libraries/{lib_id}/chunks  # list chunks
 GET    /api/v1/chunks/{id}                # Get chunk details
 PUT    /api/v1/chunks/{id}                # Update chunk
 DELETE /api/v1/chunks/{id}                # Delete chunk

@@ -11,22 +11,23 @@ except ImportError:
     print("Note: Install sentence-transformers for real embeddings")
     print("pip install sentence-transformers")
 
+from typing import list
+
 import numpy as np
-from typing import List
 
 
 class EmbeddingGenerator:
     """Generate embeddings for text."""
-    
+
     def __init__(self, model_name: str = 'all-MiniLM-L6-v2'):
         if TRANSFORMERS_AVAILABLE:
             self.model = SentenceTransformer(model_name)
             self.dimension = self.model.get_sentence_embedding_dimension()
         else:
             self.model = None
-            self.dimension = 384  # Default dimension
-    
-    def generate(self, texts: List[str]) -> List[np.ndarray]:
+            self.dimension = 384  
+
+    def generate(self, texts: list[str]) -> list[np.ndarray]:
         """Generate embeddings for texts."""
         if self.model:
             # Real embeddings
@@ -36,7 +37,6 @@ class EmbeddingGenerator:
             # Random embeddings as fallback
             embeddings = []
             for text in texts:
-                # Create somewhat consistent embeddings based on text
                 np.random.seed(hash(text) % 2**32)
                 emb = np.random.randn(self.dimension).astype(np.float32)
                 emb = emb / np.linalg.norm(emb)
@@ -44,18 +44,18 @@ class EmbeddingGenerator:
             return embeddings
 
 
-# Example usage
+
 if __name__ == "__main__":
     generator = EmbeddingGenerator()
-    
+
     texts = [
         "The quick brown fox jumps over the lazy dog",
         "Machine learning is transforming the world",
         "Vector databases enable semantic search"
     ]
-    
+
     embeddings = generator.generate(texts)
-    
+
     print(f"Generated {len(embeddings)} embeddings")
     print(f"Dimension: {len(embeddings[0])}")
     print(f"First embedding: {embeddings[0][:10]}...")

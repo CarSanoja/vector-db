@@ -1,14 +1,14 @@
-from typing import Optional, Dict, Any
+from typing import Any, Optional, dict
 
 
 class VectorDatabaseError(Exception):
     """Base exception for all vector database errors."""
-    
+
     def __init__(
         self,
         message: str,
         error_code: Optional[str] = None,
-        details: Optional[Dict[str, Any]] = None
+        details: Optional[dict[str, Any]] = None
     ):
         super().__init__(message)
         self.message = message
@@ -18,7 +18,7 @@ class VectorDatabaseError(Exception):
 
 class ValidationError(VectorDatabaseError):
     """Raised when validation fails."""
-    
+
     def __init__(self, message: str, field: Optional[str] = None, **kwargs):
         super().__init__(message, **kwargs)
         if field:
@@ -27,7 +27,7 @@ class ValidationError(VectorDatabaseError):
 
 class NotFoundError(VectorDatabaseError):
     """Raised when a requested resource is not found."""
-    
+
     def __init__(
         self,
         resource_type: str,
@@ -45,7 +45,7 @@ class NotFoundError(VectorDatabaseError):
 
 class ConflictError(VectorDatabaseError):
     """Raised when there's a conflict in the operation."""
-    
+
     def __init__(self, message: str, conflict_type: Optional[str] = None, **kwargs):
         super().__init__(message, **kwargs)
         if conflict_type:
@@ -54,7 +54,7 @@ class ConflictError(VectorDatabaseError):
 
 class IndexError(VectorDatabaseError):
     """Raised when there's an error with vector index operations."""
-    
+
     def __init__(
         self,
         message: str,

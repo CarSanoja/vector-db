@@ -1,6 +1,6 @@
 """Domain value objects."""
 from dataclasses import dataclass
-from typing import Dict, Any
+from typing import Any, dict
 from uuid import UUID
 
 
@@ -11,7 +11,7 @@ class SearchResult:
     content: str
     score: float
     distance: float
-    metadata: Dict[str, Any]
-    
+    metadata: dict[str, Any]
+
     class Config:
         from_attributes = True

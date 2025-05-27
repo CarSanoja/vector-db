@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-import httpx
 import asyncio
-import uuid
 import json
-from typing import Dict, Any
+import uuid
+from typing import Any, dict
+
+import httpx
 
 BASE_URL = "http://localhost:8000"
-API_PREFIX = "/api/v1" 
+API_PREFIX = "/api/v1"
 
 def print_section(title: str):
     print(f"\n{'='*10} {title.upper()} {'='*10}")
@@ -18,7 +19,7 @@ def print_response(response: httpx.Response, data: Any = None):
     except json.JSONDecodeError:
         print(f"Response Body: {response.text}")
 
-def print_json(data: Dict[str, Any]):
+def print_json(data: dict[str, Any]):
     print(json.dumps(data, indent=2, ensure_ascii=False))
 
 async def main():
@@ -49,7 +50,7 @@ async def main():
             assert response.status_code == 200
             assert response.json().get("name") == unique_name
 
-            print_section("3. List Libraries")
+            print_section("3. list Libraries")
             response = await client.get(f"{API_PREFIX}/libraries/?limit=5")
             print_response(response)
             assert response.status_code == 200
@@ -95,7 +96,7 @@ async def main():
                      print("Error during cleanup, library might not have been deleted.")
                      try:
                          print_json(response.json())
-                     except:
+                     except Exception:
                          print(response.text)
                 else:
                     print(f"Library {library_id} deleted successfully.")

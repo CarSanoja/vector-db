@@ -1,18 +1,18 @@
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from src.api.endpoints import health, libraries, chunks, search
-from src.api.middleware.logging import LoggingMiddleware
+from src.api.endpoints import chunks, health, libraries, search
 from src.api.middleware.error_handler import (
-    vector_database_exception_handler,
-    validation_exception_handler,
+    generic_exception_handler,
     http_exception_handler,
-    generic_exception_handler
+    validation_exception_handler,
+    vector_database_exception_handler,
 )
-from src.core.exceptions import VectorDatabaseError
+from src.api.middleware.logging import LoggingMiddleware
 from src.core.config import settings
+from src.core.exceptions import VectorDatabaseError
 
 
 def create_app() -> FastAPI:
@@ -25,26 +25,23 @@ def create_app() -> FastAPI:
         redoc_url="/redoc",
         redirect_slashes=False
     )
-    
+
     # Add CORS middleware
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],  # Configure appropriately for production
+        allow_origins=["*"],  
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    
-    # Add logging middleware
+
     app.add_middleware(LoggingMiddleware)
-    
-    # Add exception handlers
+
     app.add_exception_handler(VectorDatabaseError, vector_database_exception_handler)
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
     app.add_exception_handler(StarletteHTTPException, http_exception_handler)
     app.add_exception_handler(Exception, generic_exception_handler)
-    
-    # Include routers
+
     app.include_router(health.router, tags=["health"])
     app.include_router(
         libraries.router,
@@ -61,13 +58,13 @@ def create_app() -> FastAPI:
         prefix=settings.api_prefix,
         tags=["search"]
     )
-    
+
     @app.on_event("startup")
     async def startup_event():
         """Initialize application on startup."""
         # Create necessary directories
         settings.create_directories()
-        
+
         # Log startup
         from src.core.logging import get_logger
         logger = get_logger(__name__)
@@ -76,16 +73,15 @@ def create_app() -> FastAPI:
             environment=settings.env,
             api_prefix=settings.api_prefix
         )
-    
+
     @app.on_event("shutdown")
     async def shutdown_event():
         """Cleanup on application shutdown."""
         from src.core.logging import get_logger
         logger = get_logger(__name__)
         logger.info("Vector Database API shutting down")
-    
+
     return app
 
 
-# Create the application instance
 app = create_app()

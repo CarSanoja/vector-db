@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-import httpx
 import asyncio
-import uuid
 import json
-from typing import Dict, Any, List
+import uuid
+from typing import Any, dict, list
+
+import httpx
 
 BASE_URL = "http://localhost:8000"
 API_PREFIX = "/api/v1"
@@ -19,7 +20,7 @@ def print_response(response: httpx.Response, data: Any = None):
     except json.JSONDecodeError:
         print(f"Response Body: {response.text}")
 
-def print_json(data: Dict[str, Any]):
+def print_json(data: dict[str, Any]):
     print(json.dumps(data, indent=2, ensure_ascii=False))
 
 async def create_temp_library(client: httpx.AsyncClient) -> str:
@@ -37,7 +38,7 @@ async def main():
     async with httpx.AsyncClient(base_url=BASE_URL, timeout=30.0) as client:
         library_id = None
         chunk_id = None
-        bulk_chunk_ids: List[str] = []
+        bulk_chunk_ids: list[str] = []
 
         try:
             print_section("0. Create Temporary Library for Chunks")
@@ -63,7 +64,7 @@ async def main():
             assert response.status_code == 200
             assert response.json().get("content") == chunk_data["content"]
 
-            print_section(f"3. List Chunks in Library: {library_id}")
+            print_section(f"3. list Chunks in Library: {library_id}")
             response = await client.get(f"{API_PREFIX}/libraries/{library_id}/chunks?limit=5")
             print_response(response)
             assert response.status_code == 200

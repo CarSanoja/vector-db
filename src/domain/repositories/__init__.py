@@ -1,5 +1,5 @@
 from .base import BaseRepository
-from .library import LibraryRepository
 from .chunk import ChunkRepository
+from .library import LibraryRepository
 
 __all__ = ["BaseRepository", "LibraryRepository", "ChunkRepository"]

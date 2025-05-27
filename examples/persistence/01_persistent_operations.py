@@ -4,50 +4,45 @@ Persistence example: Demonstrating crash recovery and persistence.
 """
 
 import asyncio
+import os
 import shutil
 from pathlib import Path
 from uuid import uuid4
-import numpy as np
-import os
 
 # Set default persistence directory for examples
 os.environ['VECTOR_DB_DATA_DIR'] = str(Path.cwd() / 'examples' / 'data')
 
-from src.services.persistence_aware_service import PersistentServiceFactory
+from datetime import UTC, datetime
+
+from src.domain.entities.library import IndexType, Library
 from src.infrastructure.persistence.recovery import get_recovery_service
-from src.domain.entities.library import Library, IndexType
-from datetime import datetime, UTC
+from src.services.persistence_aware_service import PersistentServiceFactory
 
 
 async def cleanup_persistence_data():
     """Clean up all persistence data before running example."""
     data_root = Path.cwd() / 'examples' / 'data'
-    
-    # Clean up both settings-based and default directories
+
     dirs_to_clean = [
         data_root / 'wal',
         data_root / 'snapshots',
         Path('data') / 'wal',
         Path('data') / 'snapshots',
     ]
-    
     for dir_path in dirs_to_clean:
         if dir_path.exists():
             shutil.rmtree(dir_path)
             print(f"Cleaned up: {dir_path}")
-    
-    # Ensure the example data directory exists
+
     data_root.mkdir(parents=True, exist_ok=True)
 
 
 async def main():
     """Demonstrate persistence and recovery."""
     print("=== Persistence and Recovery Example ===\n")
-    
-    # Clean up any existing data
+
     await cleanup_persistence_data()
-    
-    # Reset the PersistentServiceFactory to ensure clean state
+
     PersistentServiceFactory._initialized = False
     PersistentServiceFactory._persistence_manager = None
     PersistentServiceFactory._library_repository = None
@@ -55,15 +50,12 @@ async def main():
     PersistentServiceFactory._library_service = None
     PersistentServiceFactory._chunk_service = None
     PersistentServiceFactory._search_service = None
-    
-    # Phase 1: Create data with persistence
+
     print("\nPhase 1: Creating data with persistence\n")
-    
-    # Initialize services with persistence
+
     await PersistentServiceFactory.initialize()
     library_repo = PersistentServiceFactory.get_library_repository()
-    
-    # Create libraries
+
     libraries_created = []
     for i in range(3):
         library = Library(
@@ -78,35 +70,28 @@ async def main():
         await library_repo.create(library)
         libraries_created.append(library)
         print(f"Created: {library.name}")
-    
+
     print(f"\nTotal libraries before shutdown: {await library_repo.count()}")
-    
-    # Create a backup
+
     recovery = get_recovery_service()
     backup_id = await recovery.create_backup("Manual backup before shutdown")
     print(f"Created backup: {backup_id}")
-    
-    # Shutdown
+
     print("\nShutting down services...")
     await PersistentServiceFactory.shutdown()
-    
-    # Phase 2: Simulate crash and recovery
+
     print("\n\nPhase 2: Simulating crash and recovery\n")
-    
-    # Reset factory again to simulate fresh start
+
     PersistentServiceFactory._initialized = False
     PersistentServiceFactory._persistence_manager = None
     PersistentServiceFactory._library_repository = None
-    
-    # Re-initialize (simulating application restart)
+
     await PersistentServiceFactory.initialize()
     library_repo2 = PersistentServiceFactory.get_library_repository()
-    
-    # Check recovered state
+
     recovered_count = await library_repo2.count()
     print(f"Libraries recovered: {recovered_count}")
-    
-    # Verify all libraries
+
     print("\nVerifying recovered libraries:")
     for original in libraries_created:
         recovered = await library_repo2.get(original.id)
@@ -115,10 +100,9 @@ async def main():
             print(f"  Metadata: {recovered.metadata}")
         else:
             print(f"✗ {original.name} - NOT FOUND!")
-    
-    # Add more data after recovery
+
     print("\n\nPhase 3: Adding data after recovery")
-    
+
     new_library = Library(
         id=uuid4(),
         name="Post-Recovery Library",
@@ -130,19 +114,17 @@ async def main():
     )
     await library_repo2.create(new_library)
     print(f"Created: {new_library.name}")
-    
+
     final_count = await library_repo2.count()
     print(f"\nFinal library count: {final_count}")
-    
-    # Show recovery statistics
+
     recovery2 = get_recovery_service()
     consistency = await recovery2.verify_consistency()
     print(f"\nSystem consistency: {'✓ Consistent' if consistency['consistent'] else '✗ Inconsistent'}")
     print(f"Stats: {consistency['stats']}")
-    
-    # Cleanup
+
     await PersistentServiceFactory.shutdown()
-    
+
     print("\n✓ Persistence example complete!")
 
 

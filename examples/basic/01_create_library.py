@@ -4,30 +4,25 @@ Basic example: Creating a vector library with different index types.
 """
 
 import asyncio
-from uuid import uuid4
-import numpy as np
-from datetime import datetime, UTC
 
+from src.domain.entities.library import IndexType
 from src.infrastructure.repositories.in_memory import InMemoryLibraryRepository
 from src.services.library_service.service import LibraryService
-from src.domain.entities.library import Library, IndexType
 
 
 async def main():
     """Create libraries with different index types."""
     print("=== Creating Vector Libraries ===\n")
-    
-    # Initialize repository and service
+
     repo = InMemoryLibraryRepository()
     service = LibraryService(repo)
-    
-    # Create libraries with different index types
+
     index_types = [
         (IndexType.LSH, 128, "Fast approximate search using LSH"),
         (IndexType.HNSW, 256, "High accuracy with HNSW graphs"),
         (IndexType.KD_TREE, 64, "Exact search with KD-Tree")
     ]
-    
+
     for index_type, dimension, description in index_types:
         library = await service.create_library(
             name=f"Example {index_type.value} Library",
@@ -39,16 +34,15 @@ async def main():
                 "purpose": "demonstration"
             }
         )
-        
-        print(f"Created library:")
+
+        print("Created library:")
         print(f"  ID: {library.id}")
         print(f"  Name: {library.name}")
         print(f"  Type: {library.index_type.value}")
         print(f"  Dimension: {library.dimension}")
         print(f"  Description: {library.description}")
         print()
-    
-    # List all libraries
+
     print("\nAll libraries:")
     libraries = await service.list_libraries()
     for lib in libraries:

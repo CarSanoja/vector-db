@@ -1,16 +1,16 @@
-from .base import VectorIndex, IndexConfig
-from .lsh import LSHIndex, LSHConfig
-from .hnsw import HNSWIndex, HNSWConfig
-from .kdtree import KDTreeIndex, KDTreeConfig
-from .factory import IndexFactory
+from .base import IndexConfig, VectorIndex
 from .benchmark import IndexBenchmark
+from .factory import IndexFactory
+from .hnsw import HNSWConfig, HNSWIndex
+from .kdtree import KDTreeConfig, KDTreeIndex
+from .lsh import LSHConfig, LSHIndex
 
 __all__ = [
     "VectorIndex",
     "IndexConfig",
     "LSHIndex",
     "LSHConfig",
-    "HNSWIndex", 
+    "HNSWIndex",
     "HNSWConfig",
     "KDTreeIndex",
     "KDTreeConfig",
@@ -19,7 +19,5 @@ __all__ = [
 ]
 
 
-from .factory import IndexFactory
-from .benchmark import IndexBenchmark
 
 __all__.extend(["IndexFactory", "IndexBenchmark"])

@@ -1,17 +1,17 @@
 """Factory for creating vector indexes."""
-from typing import Union
 
-from src.domain.entities.library import IndexType
-from .base import VectorIndex, IndexConfig
-from .lsh import LSHIndex, LSHConfig
-from .hnsw import HNSWIndex, HNSWConfig
-from .kdtree import KDTreeIndex, KDTreeConfig
 from src.core.config import settings
+from src.domain.entities.library import IndexType
+
+from .base import IndexConfig, VectorIndex
+from .hnsw import HNSWConfig, HNSWIndex
+from .kdtree import KDTreeConfig, KDTreeIndex
+from .lsh import LSHConfig, LSHIndex
 
 
 class IndexFactory:
     """Factory for creating vector index instances."""
-    
+
     @staticmethod
     def create_index(
         index_type: IndexType,
@@ -27,7 +27,7 @@ class IndexFactory:
                 metric=kwargs.get("metric", "euclidean")
             )
             return LSHIndex(config)
-        
+
         elif index_type == IndexType.HNSW:
             config = HNSWConfig(
                 dimension=dimension,
@@ -36,7 +36,7 @@ class IndexFactory:
                 metric=kwargs.get("metric", "euclidean")
             )
             return HNSWIndex(config)
-        
+
         elif index_type == IndexType.KD_TREE:
             config = KDTreeConfig(
                 dimension=dimension,
@@ -45,10 +45,10 @@ class IndexFactory:
                 metric=kwargs.get("metric", "euclidean")
             )
             return KDTreeIndex(config)
-        
+
         else:
             raise ValueError(f"Unknown index type: {index_type}")
-    
+
     @staticmethod
     def get_default_config(index_type: IndexType, dimension: int) -> IndexConfig:
         """Get default configuration for an index type."""

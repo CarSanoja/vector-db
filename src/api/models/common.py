@@ -1,13 +1,13 @@
-from typing import Dict, Any, Optional
 from datetime import datetime
+from typing import Any, dict
 
-from pydantic import BaseModel, Field
 from fastapi import Query
+from pydantic import BaseModel, Field
 
 
 class ErrorResponse(BaseModel):
     """Standard error response."""
-    error: Dict[str, Any] = Field(
+    error: dict[str, Any] = Field(
         ...,
         example={
             "code": "RESOURCE_NOT_FOUND",
@@ -22,7 +22,7 @@ class HealthResponse(BaseModel):
     status: str = "healthy"
     timestamp: datetime
     version: str
-    services: Dict[str, str]
+    services: dict[str, str]
 
 
 class PaginationParams(BaseModel):

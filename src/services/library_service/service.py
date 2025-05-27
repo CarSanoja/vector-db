@@ -1,15 +1,16 @@
-from typing import List, Optional, Dict, Any
-from uuid import UUID
 from datetime import datetime
+from typing import Any, Optional, dict, list
+from uuid import UUID
 
-from src.domain.entities.library import Library, IndexType
-from src.domain.repositories.library import LibraryRepository
-from src.core.exceptions import NotFoundError, ConflictError, ValidationError
-from src.core.indexes.factory import IndexFactory 
-from src.core.indexes.base import VectorIndex 
+from src.core.exceptions import ConflictError, NotFoundError, ValidationError
+from src.core.indexes.base import VectorIndex
+from src.core.indexes.factory import IndexFactory
 from src.core.logging import get_logger
-from .interface import ILibraryService 
-from src.infrastructure.locks import lock_manager, LockLevel
+from src.domain.entities.library import IndexType, Library
+from src.domain.repositories.library import LibraryRepository
+from src.infrastructure.locks import LockLevel, lock_manager
+
+from .interface import ILibraryService
 
 logger = get_logger(__name__)
 
@@ -19,7 +20,7 @@ class LibraryService(ILibraryService):
 
     def __init__(self, repository: LibraryRepository):
         self.repository = repository
-        self._indexes: Dict[UUID, VectorIndex] = {} 
+        self._indexes: dict[UUID, VectorIndex] = {}
         logger.info("Initialized LibraryService")
 
     async def create_library(
@@ -28,7 +29,7 @@ class LibraryService(ILibraryService):
         dimension: int,
         index_type: IndexType,
         description: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[dict[str, Any]] = None
     ) -> Library:
         """Create a new library with associated vector index."""
         existing = await self.repository.get_by_name(name)
@@ -46,11 +47,11 @@ class LibraryService(ILibraryService):
             metadata=metadata or {}
         )
 
-        async with lock_manager.acquire_write(LockLevel.LIBRARY, library_entity.id): 
+        async with lock_manager.acquire_write(LockLevel.LIBRARY, library_entity.id):
             try:
                 index_instance = IndexFactory.create_index(index_type, dimension)
-                self._indexes[library_entity.id] = index_instance 
-            except Exception as e:
+                self._indexes[library_entity.id] = index_instance
+            except Exception:
                 raise
 
             created = await self.repository.create(library_entity)
@@ -93,7 +94,7 @@ class LibraryService(ILibraryService):
         This is typically called after adding a significant number of chunks.
         """
         logger.info(f"Attempting to build index for library_id: {library_id}")
-        library = await self.get_library(library_id) 
+        library = await self.get_library(library_id)
         if not library:
             raise NotFoundError("Library", str(library_id))
 
@@ -102,7 +103,7 @@ class LibraryService(ILibraryService):
             logger.error(f"Index instance for library {library_id} not found when trying to build.")
             raise ValidationError(f"Index not available for library {library_id}. Cannot build.")
 
-        if hasattr(index_instance, 'build') and callable(getattr(index_instance, 'build')):
+        if hasattr(index_instance, 'build') and callable(index_instance.build):
             logger.info(f"Calling build() on index for library {library_id} (type: {library.index_type.value})")
             try:
                 await index_instance.build()
@@ -110,10 +111,10 @@ class LibraryService(ILibraryService):
             except Exception as e:
                 logger.error(f"Error building index for library {library_id}: {e}", exc_info=True)
                 raise RuntimeError(f"Failed to build index for library {library_id}: {str(e)}")
-        elif hasattr(index_instance, 'train') and callable(getattr(index_instance, 'train')):
+        elif hasattr(index_instance, 'train') and callable(index_instance.train):
             logger.info(f"Calling train() on index for library {library_id} (type: {library.index_type.value})")
             try:
-                await index_instance.train() 
+                await index_instance.train()
                 logger.info(f"Successfully trained index for library {library_id}")
             except Exception as e:
                 logger.error(f"Error training index for library {library_id}: {e}", exc_info=True)
@@ -129,7 +130,7 @@ class LibraryService(ILibraryService):
         library_id: UUID,
         name: Optional[str] = None,
         description: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[dict[str, Any]] = None
     ) -> Optional[Library]:
         """Update library information."""
         library = await self.repository.get(library_id)
@@ -138,7 +139,7 @@ class LibraryService(ILibraryService):
 
         if name and name != library.name:
             existing = await self.repository.get_by_name(name)
-            if existing and existing.id != library_id: 
+            if existing and existing.id != library_id:
                 raise ConflictError(
                     f"Library with name '{name}' already exists",
                     conflict_type="duplicate_name"
@@ -149,9 +150,9 @@ class LibraryService(ILibraryService):
             library.description = description
 
         if metadata is not None:
-            library.metadata.update(metadata) 
+            library.metadata.update(metadata)
 
-        library.updated_at = datetime.utcnow() 
+        library.updated_at = datetime.utcnow()
 
         updated = await self.repository.update(library_id, library)
         logger.info("Updated library", library_id=str(library_id))
@@ -160,16 +161,16 @@ class LibraryService(ILibraryService):
     async def delete_library(self, library_id: UUID) -> bool:
         """Delete a library and all its contents."""
         async with lock_manager.acquire_write(LockLevel.LIBRARY, library_id):
-            library = await self.repository.get(library_id) 
+            library = await self.repository.get(library_id)
             if not library:
                 logger.warning(f"Attempted to delete non-existent library: {library_id}")
                 return False
 
             if library_id in self._indexes:
                 index_instance = self._indexes[library_id]
-                if hasattr(index_instance, 'clear') and callable(getattr(index_instance, 'clear')):
+                if hasattr(index_instance, 'clear') and callable(index_instance.clear):
                     try:
-                        index_instance.clear() 
+                        index_instance.clear()
                     except Exception as e:
                         logger.error(f"Error clearing index for library {library_id} during deletion: {e}", exc_info=True)
                 del self._indexes[library_id]
@@ -187,8 +188,8 @@ class LibraryService(ILibraryService):
         index_type: Optional[IndexType] = None,
         limit: int = 100,
         offset: int = 0
-    ) -> List[Library]:
-        """List libraries with optional filtering."""
+    ) -> list[Library]:
+        """list libraries with optional filtering."""
         if index_type:
             return await self.repository.list_by_index_type(index_type, limit=limit, offset=offset)
         else:

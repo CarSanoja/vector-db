@@ -1,9 +1,9 @@
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends
 
-from src.services import ServiceFactory, ILibraryService, IChunkService, ISearchService
 from src.api.models.common import PaginationParams
+from src.services import IChunkService, ILibraryService, ISearchService, ServiceFactory
 
 
 def get_library_service() -> ILibraryService:
@@ -21,7 +21,6 @@ def get_search_service() -> ISearchService:
     return ServiceFactory.get_search_service()
 
 
-# Type aliases for dependency injection
 LibraryServiceDep = Annotated[ILibraryService, Depends(get_library_service)]
 ChunkServiceDep = Annotated[IChunkService, Depends(get_chunk_service)]
 SearchServiceDep = Annotated[ISearchService, Depends(get_search_service)]

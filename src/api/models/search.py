@@ -1,5 +1,5 @@
 """Search API models."""
-from typing import Dict, Any, List, Optional
+from typing import Any, Optional, dict, list
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -7,9 +7,9 @@ from pydantic import BaseModel, Field
 
 class SearchRequest(BaseModel):
     """Request model for vector search."""
-    embedding: List[float] = Field(..., min_items=1)
+    embedding: list[float] = Field(..., min_items=1)
     k: int = Field(default=10, gt=0, le=1000)
-    metadata_filters: Optional[Dict[str, Any]] = None
+    metadata_filters: Optional[dict[str, Any]] = None
 
 
 class SearchResult(BaseModel):
@@ -18,11 +18,11 @@ class SearchResult(BaseModel):
     content: str
     score: float
     distance: float
-    metadata: Dict[str, Any]
-    
+    metadata: dict[str, Any]
+
     class Config:
         from_attributes = True
-    
+
     @classmethod
     def from_orm(cls, obj):
         """Create from ORM object."""
@@ -37,21 +37,21 @@ class SearchResult(BaseModel):
 
 class SearchResponse(BaseModel):
     """Response model for search results."""
-    results: List[SearchResult]
+    results: list[SearchResult]
     query_time_ms: float
     total_found: int
 
 
 class MultiSearchRequest(BaseModel):
     """Request model for multi-library search."""
-    library_ids: List[UUID] = Field(..., min_items=1)
-    embedding: List[float] = Field(..., min_items=1)
+    library_ids: list[UUID] = Field(..., min_items=1)
+    embedding: list[float] = Field(..., min_items=1)
     k: int = Field(default=10, gt=0, le=1000)
-    metadata_filters: Optional[Dict[str, Any]] = None
+    metadata_filters: Optional[dict[str, Any]] = None
 
 
 class MultiSearchResponse(BaseModel):
     """Response model for multi-library search."""
-    results: Dict[UUID, List[SearchResult]]
+    results: dict[UUID, list[SearchResult]]
     query_time_ms: float
     total_found: int
