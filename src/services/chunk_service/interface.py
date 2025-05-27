@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Optional, dict, list
+from typing import Any, Optional
 from uuid import UUID
 
 from src.domain.entities.chunk import Chunk

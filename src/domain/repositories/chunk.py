@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Any, dict, list
+from typing import Any
 from uuid import UUID
 
 from ..entities.chunk import Chunk

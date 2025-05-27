@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import asyncio
-from typing import Any, dict, list
+from typing import Any
 
 import httpx
 import numpy as np

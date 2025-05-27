@@ -1,6 +1,6 @@
 """Domain value objects."""
 from dataclasses import dataclass
-from typing import Any, dict
+from typing import Any
 from uuid import UUID
 
 

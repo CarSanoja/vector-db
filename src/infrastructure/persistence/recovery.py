@@ -1,7 +1,7 @@
 """Recovery service for system state restoration with proper WAL replay."""
 import uuid
 from datetime import datetime
-from typing import Any, Optional, dict
+from typing import Any, Optional
 
 from src.core.logging import get_logger
 from src.domain.entities.library import Library

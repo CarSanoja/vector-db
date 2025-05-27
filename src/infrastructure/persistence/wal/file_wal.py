@@ -8,7 +8,6 @@ import uuid
 from asyncio import Lock
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import list
 
 import aiofiles
 

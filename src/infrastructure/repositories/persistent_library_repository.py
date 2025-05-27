@@ -1,6 +1,6 @@
 """Persistent implementation of library repository."""
 import asyncio
-from typing import Any, Optional, dict, list
+from typing import Any, Optional
 from uuid import UUID
 
 from src.core.logging import get_logger

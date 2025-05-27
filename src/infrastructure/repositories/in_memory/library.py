@@ -1,6 +1,6 @@
 from copy import deepcopy
 from datetime import datetime
-from typing import Optional, list
+from typing import Optional
 from uuid import UUID
 
 from src.domain.entities.library import Library

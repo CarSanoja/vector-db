@@ -6,7 +6,7 @@ import uuid
 from asyncio import Lock
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Optional, dict, list
+from typing import Any, Optional
 
 import aiofiles
 import msgpack

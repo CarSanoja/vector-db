@@ -2,7 +2,7 @@
 import asyncio
 import uuid
 from datetime import UTC, datetime, timedelta
-from typing import Any, Optional, dict
+from typing import Any, Optional
 
 from src.core.config import settings
 from src.core.logging import get_logger

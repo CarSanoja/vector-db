@@ -1,6 +1,6 @@
 """Chunk API models."""
 from datetime import datetime
-from typing import Any, Optional, dict, list
+from typing import Any, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field

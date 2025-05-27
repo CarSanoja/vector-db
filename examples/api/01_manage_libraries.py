@@ -2,7 +2,7 @@
 import asyncio
 import json
 import uuid
-from typing import Any, dict
+from typing import Any
 
 import httpx
 

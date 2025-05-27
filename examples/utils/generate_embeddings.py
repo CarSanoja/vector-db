@@ -11,8 +11,6 @@ except ImportError:
     print("Note: Install sentence-transformers for real embeddings")
     print("pip install sentence-transformers")
 
-from typing import list
-
 import numpy as np
 
 

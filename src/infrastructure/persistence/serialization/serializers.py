@@ -2,7 +2,7 @@
 import json
 from datetime import datetime
 from enum import Enum
-from typing import Any, dict, list
+from typing import Any
 from uuid import UUID
 
 import msgpack

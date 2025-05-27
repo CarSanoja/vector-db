@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, dict
+from typing import Any
 
 from fastapi import Query
 from pydantic import BaseModel, Field

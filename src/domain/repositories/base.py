@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Generic, Optional, TypeVar, dict, list
+from typing import Any, Generic, Optional, TypeVar
 from uuid import UUID
 
 from pydantic import BaseModel

@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Optional, list
+from typing import Optional
 from uuid import UUID
 
 from ..entities.library import Library

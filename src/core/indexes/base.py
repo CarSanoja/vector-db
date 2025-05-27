@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Optional, list, tuple
+from typing import Optional
 from uuid import UUID
 
 import numpy as np

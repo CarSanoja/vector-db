@@ -1,6 +1,6 @@
 """Benchmarking tools for vector indexes."""
 import time
-from typing import Any, dict
+from typing import Any
 from uuid import uuid4
 
 import numpy as np

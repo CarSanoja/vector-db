@@ -1,6 +1,6 @@
 """In-memory implementation of ChunkRepository."""
 from copy import deepcopy
-from typing import Any, Optional, dict, list
+from typing import Any, Optional
 from uuid import UUID
 
 from src.core.logging import get_logger

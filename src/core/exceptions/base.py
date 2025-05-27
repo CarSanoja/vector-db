@@ -1,4 +1,4 @@
-from typing import Any, Optional, dict
+from typing import Any, Optional
 
 
 class VectorDatabaseError(Exception):

@@ -1,7 +1,6 @@
 import asyncio
 from contextlib import asynccontextmanager
 from enum import Enum
-from typing import dict, list
 from uuid import UUID
 
 from src.core.logging import get_logger

@@ -6,7 +6,6 @@ Benchmark: Compare performance of different index types.
 import asyncio
 import time
 from pathlib import Path
-from typing import list, tuple
 from uuid import uuid4
 
 import numpy as np

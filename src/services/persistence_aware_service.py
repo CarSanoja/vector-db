@@ -1,7 +1,7 @@
 """Base class for services with persistence support."""
 import uuid
 from abc import ABC
-from typing import Any, dict
+from typing import Any
 
 from src.core.logging import get_logger
 from src.infrastructure.persistence.manager import get_persistence_manager

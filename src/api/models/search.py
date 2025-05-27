@@ -1,5 +1,5 @@
 """Search API models."""
-from typing import Any, Optional, dict, list
+from typing import Any, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
